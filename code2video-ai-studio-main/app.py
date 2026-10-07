@@ -33,13 +33,18 @@ from pygments.formatters import ImageFormatter
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
+
+# Render/any proxy serves over HTTPS -> trust X-Forwarded-* headers so url_for/redirects use https
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "supersecretkey123")
 
 app.config.update(
     SESSION_COOKIE_NAME="google-login-session",
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
-    SESSION_COOKIE_SECURE=False
+    SESSION_COOKIE_SECURE=os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
 )
 
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
@@ -3068,12 +3073,12 @@ Python code:
 
         final.write_videofile(
             out,
-            fps=30,
+            fps=int(os.getenv("VIDEO_FPS", "30")),
             codec="libx264",
-            bitrate="12000k",
+            bitrate=os.getenv("VIDEO_BITRATE", "12000k"),
             audio_codec="aac",
-            preset="slow",
-            threads=4,
+            preset=os.getenv("VIDEO_PRESET", "slow"),
+            threads=int(os.getenv("VIDEO_THREADS", "4")),
             logger=None
         )
 
@@ -3714,4 +3719,8 @@ def open_browser():
 if __name__ == "__main__":
     # Don't auto-open browser - let the splash screen handle it
     # threading.Thread(target=open_browser).start()
-    app.run(debug=True)
+    app.run(
+        host=os.getenv("HOST", "127.0.0.1"),
+        port=int(os.getenv("PORT", "5000")),
+        debug=os.getenv("FLASK_DEBUG", "true").lower() == "true"
+    )

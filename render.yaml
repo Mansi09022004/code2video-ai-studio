@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: code2video-ai-studio
+    runtime: docker
+    plan: free
+    rootDir: code2video-ai-studio-main
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /login
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: FLASK_SECRET_KEY
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
