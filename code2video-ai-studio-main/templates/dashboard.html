@@ -692,5 +692,19 @@ def quicksort(arr):
       loadStats(); loadRecentVideos(); updateFavoriteButton();
     });
   </script>
+<script>
+// Tab key inserts 4 spaces in the code editor instead of jumping focus
+document.addEventListener("DOMContentLoaded", function () {
+  var ed = document.getElementById("code");
+  if (!ed) return;
+  ed.addEventListener("keydown", function (e) {
+    if (e.key !== "Tab") return;
+    e.preventDefault();
+    var s = ed.selectionStart, t = ed.selectionEnd;
+    ed.value = ed.value.slice(0, s) + "    " + ed.value.slice(t);
+    ed.selectionStart = ed.selectionEnd = s + 4;
+  });
+});
+</script>
 </body>
 </html>

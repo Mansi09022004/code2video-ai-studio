@@ -3130,6 +3130,19 @@ Python code:
 # VALIDATION
 # ===============================
 
+def _clean_code(code):
+    """Fix invisible characters/indentation that sneak in when code is copy-pasted
+    (chat apps, PDFs, websites): non-breaking spaces, zero-width chars, tabs, CRLF,
+    and a common leading indent on every line."""
+    import textwrap
+    code = str(code or "")
+    for bad, good in {"\u00a0": " ", "\u2007": " ", "\u202f": " ", "\u200b": "",
+                      "\ufeff": "", "\r\n": "\n", "\r": "\n", "\t": "    "}.items():
+        code = code.replace(bad, good)
+    code = "\n".join(line.rstrip() for line in code.split("\n"))
+    return textwrap.dedent(code).strip("\n")
+
+
 def validate_python_logic(code):
     try:
         non_python_patterns = [
@@ -3148,7 +3161,8 @@ def validate_python_logic(code):
         return True, "Valid"
 
     except SyntaxError as e:
-        return False, f"Syntax Error: {e.msg}"
+        line = f" (line {e.lineno})" if getattr(e, "lineno", None) else ""
+        return False, f"Syntax Error{line}: {e.msg}"
     
 
 def _save_subtitle_file(tid, steps_meta):
@@ -3193,7 +3207,7 @@ def generate():
         return jsonify({"error": "Login required"}), 401
 
     data = request.json or {}
-    code = data.get("code", "")
+    code = _clean_code(data.get("code", ""))
     title = str(data.get("title", "")).strip()
     language = _normalize_language(data.get("language", "english"))
     explain_mode = _normalize_explain_mode(data.get("explain_mode", "beginner"))
@@ -3367,7 +3381,7 @@ def api_analyze_code():
         return jsonify({"error": "Login required"}), 401
 
     data = request.json or {}
-    code = data.get("code", "").strip()
+    code = _clean_code(data.get("code", ""))
 
     if not code:
         return jsonify({"error": "Code is required"}), 400
@@ -3381,7 +3395,7 @@ def api_concept_summary():
         return jsonify({"error": "Login required"}), 401
 
     data = request.json or {}
-    code = data.get("code", "").strip()
+    code = _clean_code(data.get("code", ""))
 
     if not code:
         return jsonify({"error": "Code required"}), 400
@@ -3425,7 +3439,7 @@ def api_explain_line():
         return jsonify({"error": "Login required"}), 401
 
     data = request.json or {}
-    code = data.get("code", "").strip()
+    code = _clean_code(data.get("code", ""))
     line = data.get("line", "").strip()
     language = _normalize_language(data.get("language", "english"))
 
@@ -3465,7 +3479,7 @@ def api_ask_doubt():
         return jsonify({"error": "Login required"}), 401
 
     data = request.json or {}
-    code = str(data.get("code", "")).strip()
+    code = _clean_code(data.get("code", ""))
     question = str(data.get("question", "")).strip()
     task_id = str(data.get("task_id", "")).strip()
     explain_mode = _normalize_explain_mode(data.get("explain_mode", "beginner"))
