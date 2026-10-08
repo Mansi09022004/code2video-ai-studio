@@ -15,7 +15,8 @@ ENV PYTHONUNBUFFERED=1 \
     VIDEO_THREADS=1 \
     VIDEO_FPS=24 \
     VIDEO_BITRATE=3000k \
-    SESSION_COOKIE_SECURE=true
+    SESSION_COOKIE_SECURE=true \
+    LOW_MEMORY_RENDER=true
 
 # 1 worker only: task progress is kept in memory, so all requests must hit the same process
 CMD gunicorn app:app --bind 0.0.0.0:${PORT:-10000} --workers 1 --threads 4 --timeout 300

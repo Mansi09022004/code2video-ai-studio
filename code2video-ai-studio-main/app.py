@@ -2870,6 +2870,43 @@ def _make_step_clip(
 # VIDEO WORKER (UPDATED WITH GROQ)
 # ===============================
 
+LOW_MEMORY_RENDER = os.getenv("LOW_MEMORY_RENDER", "false").lower() == "true"
+
+
+def _video_write_kwargs():
+    return dict(
+        fps=int(os.getenv("VIDEO_FPS", "30")),
+        codec="libx264",
+        bitrate=os.getenv("VIDEO_BITRATE", "12000k"),
+        audio_codec="aac",
+        preset=os.getenv("VIDEO_PRESET", "slow"),
+        threads=int(os.getenv("VIDEO_THREADS", "4")),
+        logger=None
+    )
+
+
+def _concat_segments(segment_paths, out_path, tid):
+    """Join per-step mp4s with ffmpeg's concat demuxer (stream copy, no re-encode, tiny RAM)."""
+    import subprocess
+    import imageio_ffmpeg
+    list_path = os.path.join(TEMP_DIR, f"{tid}_segments.txt")
+    with open(list_path, "w", encoding="utf-8") as f:
+        for seg in segment_paths:
+            f.write(f"file '{os.path.abspath(seg)}'\n")
+    try:
+        subprocess.run(
+            [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error",
+             "-f", "concat", "-safe", "0", "-i", list_path,
+             "-c", "copy", "-movflags", "+faststart", out_path],
+            check=True
+        )
+    finally:
+        try:
+            os.remove(list_path)
+        except Exception:
+            pass
+
+
 def _worker(tid, code):
     temp_files = []
     previous_vars = {}
@@ -3062,7 +3099,19 @@ Python code:
                 output_text,
                 narration
             )
-            clips.append(clip)
+            if LOW_MEMORY_RENDER:
+                # Encode this step to its own small mp4 right away and free it,
+                # so only ONE step is ever held in RAM (Render free tier = 512MB)
+                seg_path = os.path.join(TEMP_DIR, f"{tid}_seg_{i}.mp4")
+                clip.write_videofile(seg_path, **_video_write_kwargs())
+                try:
+                    clip.close()
+                except Exception:
+                    pass
+                temp_files.append(seg_path)
+                clips.append(seg_path)
+            else:
+                clips.append(clip)
 
             previous_vars = dict(variables)
 
@@ -3071,30 +3120,23 @@ Python code:
 
         out = os.path.join(VIDEO_DIR, f"{tid}.mp4")
 
-        final = concatenate_videoclips(clips, method="compose")
-        final = final.with_duration(sum(c.duration for c in clips))
+        if LOW_MEMORY_RENDER:
+            _concat_segments(clips, out, tid)
+        else:
+            final = concatenate_videoclips(clips, method="compose")
+            final = final.with_duration(sum(c.duration for c in clips))
+            final.write_videofile(out, **_video_write_kwargs())
 
-        final.write_videofile(
-            out,
-            fps=int(os.getenv("VIDEO_FPS", "30")),
-            codec="libx264",
-            bitrate=os.getenv("VIDEO_BITRATE", "12000k"),
-            audio_codec="aac",
-            preset=os.getenv("VIDEO_PRESET", "slow"),
-            threads=int(os.getenv("VIDEO_THREADS", "4")),
-            logger=None
-        )
-
-        try:
-            final.close()
-        except Exception:
-            pass
-
-        for clip in clips:
             try:
-                clip.close()
+                final.close()
             except Exception:
                 pass
+
+            for clip in clips:
+                try:
+                    clip.close()
+                except Exception:
+                    pass
 
         user_email = tasks[tid].get("user_email")
         if user_email:
