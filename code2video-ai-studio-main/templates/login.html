@@ -3,773 +3,208 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Code2Video · functional login · all buttons working</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <style>
-    * { font-family: 'Inter', sans-serif; margin: 0; padding: 0; }
-    body {
-      background: #0b2b3b;
-      min-height: 100vh;
-    }
-    .full-container {
-      max-width: 100%;
-      padding: 0 5% 0 5%;
-    }
-    .input-contrast {
-      background: #0f4052;
-      border: 2px solid #fbbf24;
-      color: #ffffff;
-      padding: 0.9rem 1.2rem;
-      width: 100%;
-      font-size: 1rem;
-      border-radius: 8px;
-    }
-    .input-contrast:focus {
-      border-color: #ffd966;
-      outline: none;
-      box-shadow: 0 0 0 3px #fbbf2480;
-      background: #1a5a70;
-    }
-    .btn-amber {
-      background: #fbbf24;
-      color: #0b2b3b;
-      font-weight: 800;
-      padding: 0.9rem 1.5rem;
-      border: none;
-      border-radius: 8px;
-      box-shadow: 0 6px 0 #b45309;
-      transition: 0.08s linear;
-      font-size: 1.2rem;
-      cursor: pointer;
-      width: 100%;
-    }
-    .btn-amber:hover {
-      transform: translateY(2px);
-      box-shadow: 0 4px 0 #b45309;
-      background: #fcd34d;
-    }
-    .stat-badge-contrast {
-      background: #0f4052;
-      color: #fbbf24;
-      font-weight: 700;
-      padding: 0.4rem 1.2rem;
-      border-left: 6px solid #fbbf24;
-    }
-    .error-msg {
-      color: #ffb3b3;
-      font-size: 0.9rem;
-      margin-top: 0.25rem;
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-    }
-    .success-msg {
-      color: #b9f5b9;
-      font-size: 0.9rem;
-      margin-top: 0.5rem;
-    }
-    .hidden { display: none; }
-    .tab-btn {
-      cursor: pointer;
-      transition: opacity 0.2s;
-      font-weight: 800;
-    }
-    /* Toast notification style */
-    .toast-notify {
-      position: fixed;
-      bottom: 30px;
-      right: 30px;
-      background: #1e3a5f;
-      border-left: 6px solid #fbbf24;
-      padding: 16px 24px;
-      border-radius: 12px;
-      color: white;
-      font-weight: 600;
-      z-index: 1000;
-      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
-      animation: slideIn 0.3s ease;
-    }
-    @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-  </style>
+  <title>Sign in — Code2Video AI Studio</title>
+  <meta name="description" content="Sign in to Code2Video AI Studio to turn Python code into narrated explainer videos.">
+  <meta name="theme-color" content="#060a14">
+  <meta property="og:title" content="Code2Video AI Studio">
+  <meta property="og:description" content="Turn Python code into narrated, step-by-step explainer videos with AI.">
+  <meta property="og:image" content="{{ request.url_root }}static/img/og.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="/static/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="/static/css/site.css">
 </head>
-<body class="bg-[#0b2b3b]">
+<body>
 
-<div class="full-container py-12 min-h-screen flex flex-col">
+<main class="auth-wrap">
+  <div class="auth-card">
+    <a href="/" class="brand" aria-label="Code2Video home">
+      <span class="brand-mark"><i class="fas fa-play"></i></span>
+      <span>Code<b>2</b>Video</span>
+    </a>
 
-  <div class="flex flex-wrap lg:flex-nowrap justify-between items-start gap-16 w-full">
+    <h1 id="authTitle">Welcome back</h1>
+    <p class="sub" id="authSub">Sign in to continue to your studio.</p>
 
-    <div class="lg:w-2/5 w-full">
-      <div class="border-l-8 border-amber-400 pl-6 mb-10">
-        <span class="text-amber-400 text-lg font-bold tracking-widest">FINAL YEAR PROJECT · V6</span>
-        <h1 class="text-7xl md:text-8xl font-black text-white leading-[1.1] mt-2">
-          CODE<span class="text-amber-400">2</span>VIDEO
-        </h1>
-        <p class="text-2xl text-cyan-300 font-semibold mt-4 max-w-xl">
-          from static scripts → cinematic AI explanations
-        </p>
-      </div>
-
-      <div class="space-y-5 mt-12">
-        <div class="flex items-start gap-5">
-          <span class="bg-amber-400 text-[#0b2b3b] font-black text-xl w-10 h-10 flex items-center justify-center shadow-lg rounded">1</span>
-          <span class="text-white text-2xl font-bold">step-by-step AI narration</span>
-        </div>
-        <div class="flex items-start gap-5">
-          <span class="bg-amber-400 text-[#0b2b3b] font-black text-xl w-10 h-10 flex items-center justify-center shadow-lg rounded">2</span>
-          <span class="text-white text-2xl font-bold">MP4 export · 1080p 60fps</span>
-        </div>
-        <div class="flex items-start gap-5">
-          <span class="bg-amber-400 text-[#0b2b3b] font-black text-xl w-10 h-10 flex items-center justify-center shadow-lg rounded">3</span>
-          <span class="text-white text-2xl font-bold">live stack visualization</span>
-        </div>
-      </div>
-
-      <div class="mt-16 bg-[#144a5e] p-8 border-l-8 border-amber-400 w-full shadow-2xl">
-        <div class="flex items-center gap-4 border-b-2 border-amber-400/40 pb-4 mb-5">
-          <i class="fas fa-folder-open text-amber-400 text-4xl"></i>
-          <span class="text-white text-3xl font-black">RECENT PROJECTS</span>
-        </div>
-        <div id="publicRecentProjects" class="space-y-4">
-          <p class="text-cyan-300">Loading projects...</p>
-        </div>
-        <button id="browseProjectsBtn" class="inline-block mt-6 text-amber-400 font-bold underline underline-offset-4 text-lg">→ refresh projects</button>
-      </div>
+    <div class="tabs" role="tablist" aria-label="Sign in or create account">
+      <button class="tab" role="tab" id="tabLogin" aria-selected="true" aria-controls="loginForm">Sign in</button>
+      <button class="tab" role="tab" id="tabRegister" aria-selected="false" aria-controls="registerForm">Create account</button>
     </div>
 
-    <div class="lg:w-2/5 w-full bg-[#144a5e] border-2 border-amber-400 p-8 shadow-2xl">
-      <div class="border-b-2 border-amber-400/40 pb-5 mb-7 flex items-center justify-between">
-        <div class="flex items-center gap-5">
-          <i class="fas fa-sign-in-alt text-4xl text-amber-400" id="formIcon"></i>
-          <div>
-            <div class="flex gap-4 text-2xl">
-              <span id="loginTab" class="tab-btn font-black text-white" style="opacity:1;">LOGIN</span>
-              <span class="text-amber-400/60 font-black">|</span>
-              <span id="registerTab" class="tab-btn font-black text-white/60" style="opacity:0.7;">REGISTER</span>
-            </div>
-            <p class="text-cyan-300 text-base" id="formSubtitle">access your account</p>
-          </div>
-        </div>
-        <span id="savedBadge" class="stat-badge-contrast"><i class="far fa-bookmark mr-2"></i>real app</span>
+    {% if error %}
+    <div class="form-alert error show" role="alert"><i class="fas fa-circle-exclamation"></i><span>{{ error }}</span></div>
+    {% endif %}
+
+    <a href="/auth/google" class="btn btn-google btn-block">
+      <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+      Continue with Google
+    </a>
+
+    <div class="divider">or use email</div>
+
+    <!-- Sign in -->
+    <form id="loginForm" role="tabpanel" aria-labelledby="tabLogin" novalidate>
+      <div class="form-alert error" id="loginAlert" role="alert"><i class="fas fa-circle-exclamation"></i><span></span></div>
+      <div class="field">
+        <label for="loginEmail">Email</label>
+        <input class="input" id="loginEmail" type="email" autocomplete="email" placeholder="you@example.com" required>
+        <div class="field-error" id="loginEmailErr"></div>
       </div>
-
-      <div id="formContainer">
-        <div id="loginForm" class="space-y-5">
-          <div>
-            <label class="block text-amber-400 font-bold text-sm uppercase tracking-wider mb-2">email</label>
-            <input type="email" id="loginEmail" placeholder="taylor@university.edu" class="input-contrast">
-            <div id="loginEmailError" class="error-msg hidden"><i class="fas fa-exclamation-circle"></i> <span></span></div>
-          </div>
-          <div>
-            <label class="block text-amber-400 font-bold text-sm uppercase tracking-wider mb-2">password</label>
-            <input type="password" id="loginPassword" placeholder="········" class="input-contrast">
-            <div id="loginPasswordError" class="error-msg hidden"><i class="fas fa-exclamation-circle"></i> <span></span></div>
-          </div>
-
-          <div class="flex items-center justify-between">
-            <label class="flex items-center gap-2 text-cyan-300"><input type="checkbox" class="accent-amber-400"> remember</label>
-            <button id="forgotBtn" type="button" class="text-amber-400 text-sm hover:underline">forgot?</button>
-          </div>
-
-          <button id="loginBtn" class="btn-amber flex items-center justify-center gap-2">
-            <i class="fas fa-sign-in-alt"></i> LOG IN
-          </button>
-
-          <div id="loginGeneralError" class="error-msg hidden"><i class="fas fa-exclamation-triangle"></i> <span></span></div>
-          <div id="loginSuccess" class="success-msg hidden"><i class="fas fa-check-circle"></i> <span></span></div>
+      <div class="field">
+        <label for="loginPassword">Password</label>
+        <div class="pw-wrap">
+          <input class="input" id="loginPassword" type="password" autocomplete="current-password" placeholder="Your password" required>
+          <button type="button" class="pw-toggle" data-target="loginPassword" aria-label="Show password"><i class="far fa-eye"></i></button>
         </div>
+        <div class="field-error" id="loginPasswordErr"></div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block btn-lg" id="loginBtn">Sign in</button>
+    </form>
 
-        <div id="registerForm" class="space-y-5 hidden">
-          <div>
-            <label class="block text-amber-400 font-bold text-sm uppercase tracking-wider mb-2">full name</label>
-            <input type="text" id="regName" placeholder="e.g., Taylor Chen" class="input-contrast">
-            <div id="regNameError" class="error-msg hidden"><i class="fas fa-exclamation-circle"></i> <span></span></div>
-          </div>
-          <div>
-            <label class="block text-amber-400 font-bold text-sm uppercase tracking-wider mb-2">email</label>
-            <input type="email" id="regEmail" placeholder="taylor@university.edu" class="input-contrast">
-            <div id="regEmailError" class="error-msg hidden"><i class="fas fa-exclamation-circle"></i> <span></span></div>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-amber-400 font-bold text-sm uppercase tracking-wider mb-2">institution</label>
-              <input type="text" id="regInst" placeholder="Stanford / MIT" class="input-contrast">
-            </div>
-            <div>
-              <label class="block text-amber-400 font-bold text-sm uppercase tracking-wider mb-2">role</label>
-              <select id="regRole" class="input-contrast">
-                <option>student</option>
-                <option>teacher</option>
-                <option>researcher</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label class="block text-amber-400 font-bold text-sm uppercase tracking-wider mb-2">password</label>
-            <input type="password" id="regPassword" placeholder="min 6 characters" class="input-contrast">
-            <div id="regPasswordError" class="error-msg hidden"><i class="fas fa-exclamation-circle"></i> <span></span></div>
-          </div>
-          <div>
-            <label class="block text-amber-400 font-bold text-sm uppercase tracking-wider mb-2">confirm password</label>
-            <input type="password" id="regConfirm" placeholder="re-enter password" class="input-contrast">
-            <div id="regConfirmError" class="error-msg hidden"><i class="fas fa-exclamation-circle"></i> <span></span></div>
-          </div>
-
-          <div>
-            <label class="block text-amber-400 font-bold text-sm uppercase tracking-wider mb-2">topics of interest</label>
-            <div class="flex flex-wrap gap-3">
-              <span class="topic-chip bg-[#0f4052] text-cyan-300 px-4 py-2 text-sm border-l-4 border-amber-400 cursor-pointer hover:bg-amber-400/30 transition">algorithms</span>
-              <span class="topic-chip bg-[#0f4052] text-cyan-300 px-4 py-2 text-sm border-l-4 border-amber-400 cursor-pointer hover:bg-amber-400/30 transition">data structures</span>
-              <span class="topic-chip bg-[#0f4052] text-cyan-300 px-4 py-2 text-sm border-l-4 border-amber-400 cursor-pointer hover:bg-amber-400/30 transition">AI/ML</span>
-              <span class="topic-chip bg-[#0f4052] text-cyan-300 px-4 py-2 text-sm border-l-4 border-amber-400 cursor-pointer hover:bg-amber-400/30 transition">web dev</span>
-            </div>
-          </div>
-
-          <div class="flex items-start gap-3">
-            <input type="checkbox" id="regTips" class="w-5 h-5 accent-amber-400 mt-1">
-            <span class="text-cyan-300 text-sm">send me weekly code visualization tips</span>
-          </div>
-
-          <button id="registerBtn" class="btn-amber flex items-center justify-center gap-2">
-            <i class="fas fa-user-plus"></i> CREATE ACCOUNT
-          </button>
-
-          <div id="registerGeneralError" class="error-msg hidden"><i class="fas fa-exclamation-triangle"></i> <span></span></div>
-          <div id="registerSuccess" class="success-msg hidden"><i class="fas fa-check-circle"></i> <span></span></div>
+    <!-- Create account -->
+    <form id="registerForm" role="tabpanel" aria-labelledby="tabRegister" hidden novalidate>
+      <div class="form-alert error" id="registerAlert" role="alert"><i class="fas fa-circle-exclamation"></i><span></span></div>
+      <div class="form-alert success" id="registerSuccess" role="status"><i class="fas fa-circle-check"></i><span></span></div>
+      <div class="field">
+        <label for="regName">Full name</label>
+        <input class="input" id="regName" type="text" autocomplete="name" placeholder="Your name" required>
+        <div class="field-error" id="regNameErr"></div>
+      </div>
+      <div class="field">
+        <label for="regEmail">Email</label>
+        <input class="input" id="regEmail" type="email" autocomplete="email" placeholder="you@example.com" required>
+        <div class="field-error" id="regEmailErr"></div>
+      </div>
+      <div class="field">
+        <label for="regPassword">Password</label>
+        <div class="pw-wrap">
+          <input class="input" id="regPassword" type="password" autocomplete="new-password" placeholder="At least 6 characters" required minlength="6">
+          <button type="button" class="pw-toggle" data-target="regPassword" aria-label="Show password"><i class="far fa-eye"></i></button>
         </div>
+        <div class="field-error" id="regPasswordErr"></div>
       </div>
+      <button type="submit" class="btn btn-primary btn-block btn-lg" id="registerBtn">Create account</button>
+    </form>
 
-      <div class="pt-4 mt-4">
-        <p class="text-cyan-300/80 text-sm mb-3">or continue with</p>
-        <div class="flex gap-4">
-          <a href="/auth/google" class="bg-[#0f4052] hover:bg-[#1a5a70] text-white font-bold py-3 px-6 flex items-center gap-2 text-base border-l-4 border-amber-400 w-1/2 justify-center rounded">
-            <i class="fab fa-google text-amber-400"></i> Google
-          </a>
-          <a href="#" id="githubMockBtn" class="bg-[#0f4052] hover:bg-[#1a5a70] text-white font-bold py-3 px-6 flex items-center gap-2 text-base border-l-4 border-amber-400 w-1/2 justify-center rounded">
-            <i class="fab fa-github text-amber-400"></i> GitHub
-          </a>
-        </div>
-        <div id="socialMsg" class="error-msg hidden mt-2"><i class="fas fa-info-circle"></i> <span></span></div>
-      </div>
-
-      <div class="flex flex-wrap items-center justify-between border-t-2 border-amber-400/30 pt-5 mt-5">
-        <p class="text-cyan-300 text-base"><span id="togglePrompt">don't have an account?</span> <a href="#" id="toggleLink" class="text-amber-400 font-bold text-lg underline-offset-4 underline">register</a></p>
-        <button id="dashboardPreviewBtn" class="text-amber-400 font-bold text-sm"><i class="fas fa-columns mr-1"></i>dashboard preview</button>
-      </div>
-    </div>
+    <p class="auth-foot"><a href="/"><i class="fas fa-arrow-left"></i> Back to home</a></p>
   </div>
-
-  <!-- QUICK GENERATOR SECTION with all functional buttons -->
-  <div class="w-full mt-24 mb-20 flex flex-wrap items-end gap-8">
-    <div class="flex-1 min-w-[300px]">
-      <label class="text-amber-400 text-xl font-bold block mb-2">quick generator · paste & visualize</label>
-      <div class="flex border-2 border-amber-400 bg-[#144a5e] rounded">
-        <span class="bg-amber-400 px-6 flex items-center text-[#0b2b3b] text-2xl rounded-l"><i class="fas fa-code"></i></span>
-        <input id="quickCodeInput" type="text" placeholder="def fibonacci(n): ..." class="w-full bg-[#0f4052] text-white text-xl px-6 py-5 focus:outline-none">
-        <button id="quickCodeBtn" class="bg-amber-400 hover:bg-amber-300 text-[#0b2b3b] font-bold px-10 text-xl uppercase tracking-wider rounded-r">generate</button>
-      </div>
-      <div class="flex gap-3 mt-5">
-        <span class="lang-chip bg-[#0f4052] text-cyan-300 px-4 py-2 text-sm border-l-4 border-amber-400 cursor-pointer hover:bg-amber-400/30 transition">python</span>
-        <span class="lang-chip bg-[#0f4052] text-cyan-300 px-4 py-2 text-sm border-l-4 border-amber-400 cursor-pointer hover:bg-amber-400/30 transition">javascript</span>
-        <span class="lang-chip bg-[#0f4052] text-cyan-300 px-4 py-2 text-sm border-l-4 border-amber-400 cursor-pointer hover:bg-amber-400/30 transition">java</span>
-        <span class="lang-chip bg-[#0f4052] text-cyan-300 px-4 py-2 text-sm border-l-4 border-amber-400 cursor-pointer hover:bg-amber-400/30 transition">c++</span>
-      </div>
-    </div>
-    <div class="text-cyan-300 text-sm border-l-4 border-amber-400 pl-5 leading-relaxed bg-[#144a5e] p-4 shadow-lg">
-      <span class="font-bold text-white text-base">login required to generate</span><br>
-      paste code here and continue to dashboard
-    </div>
-  </div>
-
-  <!-- CORE ENGINE SECTION with functional buttons -->
-  <div class="flex flex-wrap lg:flex-nowrap gap-20 w-full mt-10">
-    <div class="lg:w-1/3 w-full">
-      <div class="border-l-8 border-amber-400 pl-6">
-        <span class="text-amber-400 text-lg font-black">⚡ CORE ENGINE</span>
-        <h2 class="text-5xl font-black text-white mt-2 leading-tight">WRITE PYTHON,<br>GET ANIMATION</h2>
-      </div>
-      <p class="text-cyan-300 text-xl mt-8 max-w-sm">frame-by-frame visual stories for algorithms, data flows & teaching.</p>
-      <div class="mt-12 space-y-4">
-        <button id="generateVideoHeroBtn" class="btn-amber inline-block w-auto px-10">generate video →</button>
-        <button id="documentationBtn" class="block text-amber-400 font-bold text-lg underline mt-4">documentation</button>
-      </div>
-    </div>
-
-    <div class="lg:w-2/3 w-full bg-[#144a5e] border-r-8 border-amber-400 p-8 shadow-xl">
-      <div class="flex items-center justify-between border-b-2 border-amber-400/40 pb-4 mb-6">
-        <span class="text-amber-400 font-mono text-xl flex items-center gap-3"><i class="fas fa-circle text-green-400 text-sm"></i> Python_example.py</span>
-        <button id="copyExampleBtn" class="bg-amber-400 text-[#0b2b3b] font-bold px-5 py-2 text-sm rounded">copy</button>
-      </div>
-      <pre id="exampleCodeBlock" class="font-mono text-lg text-white/90 leading-relaxed">
-<span class="text-amber-400">x</span> = <span class="text-cyan-300">5</span>
-<span class="text-amber-400">y</span> = <span class="text-cyan-300">10</span>
-<span class="text-blue-300">print</span>(x + y)
-
-<span class="text-slate-400"># visualization</span>
->> frame 1: assign x
->> frame 2: assign y
->> frame 3: addition → 15</pre>
-      <div class="flex gap-3 mt-8">
-        <span class="bg-amber-400 text-[#0b2b3b] w-10 h-10 flex items-center justify-center font-black text-xl rounded">1</span>
-        <span class="bg-amber-400 text-[#0b2b3b] w-10 h-10 flex items-center justify-center font-black text-xl opacity-80 rounded">2</span>
-        <span class="bg-amber-400 text-[#0b2b3b] w-10 h-10 flex items-center justify-center font-black text-xl opacity-60 rounded">3</span>
-        <span class="ml-auto text-cyan-300 text-lg"><i class="far fa-clock"></i> live simulation</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- AI REASONING SECTION -->
-  <div class="flex flex-wrap lg:flex-nowrap gap-20 w-full mt-32">
-    <div class="lg:w-2/3 w-full bg-[#144a5e] border-l-8 border-amber-400 p-8 order-2 lg:order-1 shadow-xl">
-      <div class="flex items-center gap-4 border-b-2 border-amber-400/40 pb-4 mb-6">
-        <i class="fas fa-microchip text-5xl text-amber-400"></i>
-        <span class="text-amber-400 font-black text-3xl">explanation trace</span>
-      </div>
-      <div class="space-y-5 text-lg">
-        <div class="flex gap-5"><span class="bg-amber-400 text-[#0b2b3b] font-black w-10 h-10 flex items-center justify-center text-xl rounded">1</span><div><span class="text-white font-mono text-xl">x = 5</span><p class="text-cyan-300">store integer 5 in variable 'x'</p></div></div>
-        <div class="flex gap-5"><span class="bg-amber-400 text-[#0b2b3b] font-black w-10 h-10 flex items-center justify-center text-xl rounded">2</span><div><span class="text-white font-mono text-xl">y = 10</span><p class="text-cyan-300">stack allocation: y=10</p></div></div>
-        <div class="flex gap-5"><span class="bg-amber-400 text-[#0b2b3b] font-black w-10 h-10 flex items-center justify-center text-xl rounded">3</span><div><span class="text-white font-mono text-xl">print(x + y)</span><p class="text-cyan-300">add, output 15</p></div></div>
-      </div>
-    </div>
-    <div class="lg:w-1/3 w-full order-1 lg:order-2">
-      <div class="border-l-8 border-amber-400 pl-6">
-        <span class="text-amber-400 text-lg font-black">🧠 AI REASONING</span>
-        <h2 class="text-5xl font-black text-white mt-2 leading-tight">INTELLIGENT NARRATION</h2>
-      </div>
-      <p class="text-cyan-300 text-xl mt-8 max-w-sm">explains each operation, variable state & control flow — just like a tutor.</p>
-      <div class="mt-10 flex gap-5">
-        <span class="text-white text-xl flex items-center gap-2"><i class="fas fa-check-circle text-amber-400"></i> semantic parsing</span>
-        <span class="text-white text-xl flex items-center gap-2"><i class="fas fa-check-circle text-amber-400"></i> voiceover ready</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- VIDEO SYNTHESIS SECTION with functional theme/preview buttons -->
-  <div class="flex flex-wrap lg:flex-nowrap gap-20 w-full mt-32">
-    <div class="lg:w-1/3 w-full">
-      <div class="border-l-8 border-amber-400 pl-6">
-        <span class="text-amber-400 text-lg font-black">🎬 VIDEO SYNTHESIS</span>
-        <h2 class="text-5xl font-black text-white mt-2 leading-tight">CINEMATIC OUTPUT</h2>
-      </div>
-      <p class="text-cyan-300 text-xl mt-8">MP4 with animated stacks, syntax highlight, audio track. share directly.</p>
-      
-      <!-- THEME SELECTOR - FUNCTIONAL -->
-      <div class="mt-8">
-        <label class="text-amber-400 font-bold text-sm uppercase tracking-wider block mb-3">Visual Themes</label>
-        <div class="flex flex-wrap gap-3">
-          <button id="themeOceanBtn" class="theme-btn bg-[#0f4052] text-cyan-300 px-5 py-3 text-sm border-l-4 border-amber-400 rounded hover:bg-amber-400/30 transition">🌊 Ocean</button>
-          <button id="themeMidnightBtn" class="theme-btn bg-[#0f4052] text-cyan-300 px-5 py-3 text-sm border-l-4 border-amber-400 rounded hover:bg-amber-400/30 transition">🌙 Midnight</button>
-          <button id="themeNeonBtn" class="theme-btn bg-[#0f4052] text-cyan-300 px-5 py-3 text-sm border-l-4 border-amber-400 rounded hover:bg-amber-400/30 transition">⚡ Neon</button>
-        </div>
-      </div>
-      
-      <!-- VOICE SPEED - FUNCTIONAL -->
-      <div class="mt-6">
-        <label class="text-amber-400 font-bold text-sm uppercase tracking-wider block mb-3">Voice Speed</label>
-        <div class="flex flex-wrap gap-3">
-          <button id="speedSlowBtn" class="speed-btn bg-[#0f4052] text-cyan-300 px-5 py-3 text-sm border-l-4 border-amber-400 rounded hover:bg-amber-400/30 transition">🐢 Slow</button>
-          <button id="speedNormalBtn" class="speed-btn bg-amber-400/40 text-white px-5 py-3 text-sm border-l-4 border-amber-400 rounded">⚡ Normal</button>
-          <button id="speedFastBtn" class="speed-btn bg-[#0f4052] text-cyan-300 px-5 py-3 text-sm border-l-4 border-amber-400 rounded hover:bg-amber-400/30 transition">🚀 Fast</button>
-        </div>
-      </div>
-      
-      <!-- ANALYZE BUTTON - FUNCTIONAL -->
-      <div class="mt-8">
-        <button id="analyzeMockBtn" class="w-full bg-cyan-600/30 border border-cyan-400 text-cyan-300 font-bold py-4 px-6 rounded-xl hover:bg-cyan-600/50 transition flex items-center justify-center gap-3">
-          <i class="fas fa-chart-line"></i> 🔍 Analyze Code Complexity
-        </button>
-      </div>
-      
-      <!-- PREVIEW BUTTON - FUNCTIONAL -->
-      <div class="mt-4">
-        <button id="previewMockBtn" class="w-full bg-purple-600/30 border border-purple-400 text-purple-300 font-bold py-4 px-6 rounded-xl hover:bg-purple-600/50 transition flex items-center justify-center gap-3">
-          <i class="fas fa-volume-up"></i> 🔄 Preview Voice & Theme
-        </button>
-      </div>
-      
-      <div class="grid grid-cols-2 gap-4 mt-8">
-        <div class="bg-[#144a5e] border-b-4 border-amber-400 p-6 shadow-lg"><i class="fas fa-clock text-5xl text-amber-400 mb-2"></i><div class="text-4xl font-black text-white">~20s</div><div class="text-cyan-300">avg duration</div></div>
-        <div class="bg-[#144a5e] border-b-4 border-amber-400 p-6 shadow-lg"><i class="fas fa-hd text-5xl text-amber-400 mb-2"></i><div class="text-4xl font-black text-white">1080p</div><div class="text-cyan-300">60fps</div></div>
-      </div>
-      <div class="mt-8 stat-badge-contrast inline-block"><i class="fas fa-video mr-2"></i> Real AI generated output</div>
-    </div>
-
-    <div class="lg:w-2/3 w-full bg-[#144a5e] border-2 border-amber-400 p-0 shadow-2xl">
-      <div class="bg-amber-400 p-5 flex items-center gap-4 border-b-2 border-amber-400/60">
-        <i class="fas fa-circle text-red-200 text-xs"></i><i class="fas fa-circle text-yellow-200 text-xs"></i><i class="fas fa-circle text-green-200 text-xs"></i>
-        <span class="flex-1 text-[#0b2b3b] font-black text-xl">code2video_preview.mp4</span>
-        <span class="bg-[#0b2b3b] text-amber-400 font-bold px-4 py-1 text-sm rounded">new</span>
-      </div>
-      <div class="p-10 flex flex-col items-start bg-[#0f4052]">
-        <div class="w-full aspect-video bg-gradient-to-r from-[#1a5a70] to-[#0b2b3b] flex items-center justify-center border-l-8 border-amber-400">
-          <div class="text-left ml-10">
-            <i class="fas fa-play-circle text-8xl text-amber-400 mb-4"></i>
-            <div class="text-white font-mono text-2xl flex gap-5"><span>STACK: x=5</span> <span>|</span> <span>y=10</span> <span>|</span> <span>ADD</span></div>
-          </div>
-        </div>
-        <div class="flex w-full gap-2 mt-6">
-          <div class="h-3 bg-amber-400 flex-1"></div><div class="h-3 bg-amber-400/80 flex-1"></div><div class="h-3 bg-amber-400/60 flex-1"></div><div class="h-3 bg-amber-400/40 flex-1"></div>
-        </div>
-        <div class="flex gap-6 mt-6 text-cyan-300 text-base">
-          <span><i class="far fa-file-code mr-2"></i> Python input</span>
-          <span><i class="far fa-clock mr-2"></i> narrated output</span>
-          <span><i class="fas fa-microchip mr-2"></i> AI narration: enabled</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- FINAL CTA -->
-  <div class="w-full mt-40 border-t-8 border-amber-400 pt-16 pb-20 flex flex-wrap justify-between items-end gap-10">
-    <div>
-      <span class="text-amber-400 text-2xl font-black">🚀 REAL PROJECT EXPERIENCE</span>
-      <h3 class="text-7xl font-black text-white mt-2 max-w-3xl leading-tight">FROM CODE TO CINEMA, IN ONE CLICK.</h3>
-      <p class="text-cyan-300 text-xl mt-6 max-w-2xl">join the community — save your videos, share with classmates, impress your professors.</p>
-    </div>
-    <div class="flex gap-6">
-      <button id="startNowBtn" class="btn-amber text-2xl py-6 px-16 flex items-center gap-4"><i class="fas fa-wand-magic-sparkles"></i> start now</button>
-      <a href="#" id="githubStarBtn" class="bg-transparent border-2 border-amber-400 text-amber-400 font-black text-2xl py-6 px-16 hover:bg-amber-400 hover:text-[#0b2b3b] transition flex items-center gap-4 rounded"><i class="fab fa-github"></i> github</a>
-    </div>
-  </div>
-
-  <footer class="w-full mt-20 border-t-2 border-amber-400/30 pt-10 text-cyan-300/70 text-base flex justify-between">
-    <p>Code2Video · final year project · high contrast · teacher edition</p>
-    <div class="flex gap-8">
-      <a href="#" class="hover:text-amber-400">privacy</a>
-      <a href="#" class="hover:text-amber-400">examples</a>
-      <a href="#" class="hover:text-amber-400">API</a>
-    </div>
-  </footer>
-</div>
-
-<!-- Toast notification container -->
-<div id="toastContainer"></div>
+</main>
 
 <script>
-(function() {
-  // ========== HELPER FUNCTIONS ==========
-  function showToast(message, type = 'info') {
-    const container = document.getElementById('toastContainer');
-    const toast = document.createElement('div');
-    toast.className = 'toast-notify';
-    const icon = type === 'success' ? '✅' : (type === 'warning' ? '⚠️' : 'ℹ️');
-    toast.innerHTML = `${icon} ${message}`;
-    container.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const tabs = { login: $("tabLogin"), register: $("tabRegister") };
+  const forms = { login: $("loginForm"), register: $("registerForm") };
+  const copy = {
+    login: ["Welcome back", "Sign in to continue to your studio."],
+    register: ["Create your account", "Start turning code into videos — it's free."]
+  };
+
+  function setMode(mode) {
+    Object.keys(forms).forEach((k) => {
+      const on = k === mode;
+      forms[k].hidden = !on;
+      tabs[k].setAttribute("aria-selected", String(on));
+    });
+    $("authTitle").textContent = copy[mode][0];
+    $("authSub").textContent = copy[mode][1];
+    clearErrors();
+    history.replaceState(null, "", mode === "register" ? "/login?mode=register" : "/login");
+  }
+  tabs.login.addEventListener("click", () => setMode("login"));
+  tabs.register.addEventListener("click", () => setMode("register"));
+
+  function clearErrors() {
+    document.querySelectorAll(".field-error").forEach((e) => (e.textContent = ""));
+    document.querySelectorAll(".input").forEach((i) => i.removeAttribute("aria-invalid"));
+    document.querySelectorAll("form .form-alert").forEach((a) => a.classList.remove("show"));
+  }
+  function fieldError(inputId, msg) {
+    $(inputId + "Err").textContent = msg;
+    $(inputId).setAttribute("aria-invalid", "true");
+  }
+  function alertMsg(id, msg) {
+    const el = $(id);
+    el.querySelector("span").textContent = msg;
+    el.classList.add("show");
+  }
+  function busy(btn, on, label) {
+    btn.disabled = on;
+    btn.innerHTML = on ? '<span class="spinner"></span> Please wait…' : label;
+  }
+  const validEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+
+  async function post(url, body) {
+    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    let data = {};
+    try { data = await res.json(); } catch (_) {}
+    return { ok: res.ok && data.status === "success", data };
   }
 
-  function showAlertMessage(title, message) {
-    alert(`📢 ${title}\n\n${message}`);
-  }
-
-  // Current selected settings
-  let currentTheme = 'ocean';
-  let currentSpeed = 'normal';
-  
-  // ========== THEME BUTTONS (FUNCTIONAL) ==========
-  document.getElementById('themeOceanBtn').addEventListener('click', () => {
-    currentTheme = 'ocean';
-    showToast('🌊 Ocean theme selected - Video will have cool blue gradient background', 'success');
-    // Visual feedback - highlight selected
-    document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('bg-amber-400/40', 'text-white'));
-    document.getElementById('themeOceanBtn').classList.add('bg-amber-400/40', 'text-white');
-  });
-  
-  document.getElementById('themeMidnightBtn').addEventListener('click', () => {
-    currentTheme = 'midnight';
-    showToast('🌙 Midnight theme selected - Dark elegant background with gold accents', 'success');
-    document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('bg-amber-400/40', 'text-white'));
-    document.getElementById('themeMidnightBtn').classList.add('bg-amber-400/40', 'text-white');
-  });
-  
-  document.getElementById('themeNeonBtn').addEventListener('click', () => {
-    currentTheme = 'neon';
-    showToast('⚡ Neon theme selected - Vibrant colors with glowing effects', 'success');
-    document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('bg-amber-400/40', 'text-white'));
-    document.getElementById('themeNeonBtn').classList.add('bg-amber-400/40', 'text-white');
-  });
-  
-  // ========== SPEED BUTTONS (FUNCTIONAL) ==========
-  document.getElementById('speedSlowBtn').addEventListener('click', () => {
-    currentSpeed = 'slow';
-    showToast('🐢 Slow speed - AI narration will be slower and more detailed', 'success');
-    document.querySelectorAll('.speed-btn').forEach(btn => btn.classList.remove('bg-amber-400/40', 'text-white'));
-    document.getElementById('speedSlowBtn').classList.add('bg-amber-400/40', 'text-white');
-  });
-  
-  document.getElementById('speedNormalBtn').addEventListener('click', () => {
-    currentSpeed = 'normal';
-    showToast('⚡ Normal speed - Standard narration pace', 'success');
-    document.querySelectorAll('.speed-btn').forEach(btn => btn.classList.remove('bg-amber-400/40', 'text-white'));
-    document.getElementById('speedNormalBtn').classList.add('bg-amber-400/40', 'text-white');
-  });
-  
-  document.getElementById('speedFastBtn').addEventListener('click', () => {
-    currentSpeed = 'fast';
-    showToast('🚀 Fast speed - Faster narration for quick learning', 'success');
-    document.querySelectorAll('.speed-btn').forEach(btn => btn.classList.remove('bg-amber-400/40', 'text-white'));
-    document.getElementById('speedFastBtn').classList.add('bg-amber-400/40', 'text-white');
-  });
-  
-  // ========== ANALYZE BUTTON (FUNCTIONAL) ==========
-  document.getElementById('analyzeMockBtn').addEventListener('click', () => {
-    const demoCode = `def fibonacci(n):
-    if n <= 1:
-        return n
-    return fibonacci(n-1) + fibonacci(n-2)
-
-print(fibonacci(6))`;
-    
-    showAlertMessage('🔍 Code Analysis Result', 
-      `📊 Algorithm: Fibonacci (Recursive)
-📁 Category: Dynamic Programming / Recursion
-⏱️ Time Complexity: O(2ⁿ) - exponential
-💾 Space Complexity: O(n) - recursion stack depth
-📝 Summary: This code calculates Fibonacci numbers using recursion. Each call spawns two more calls, creating an exponential growth pattern.`);
-  });
-  
-  // ========== PREVIEW BUTTON (FUNCTIONAL) ==========
-  document.getElementById('previewMockBtn').addEventListener('click', () => {
-    showAlertMessage('🎬 Preview Settings', 
-      `Current Configuration:
-━━━━━━━━━━━━━━━━━━━━
-🎨 Theme: ${currentTheme.toUpperCase()}
-🎤 Voice Speed: ${currentSpeed.toUpperCase()}
-🌐 Language: English
-📖 Explanation Mode: Beginner
-
-✨ The video will use these settings when generated.
-✨ You can change them anytime before generation!`);
-  });
-  
-  // ========== LANGUAGE CHIPS (FUNCTIONAL) ==========
-  document.querySelectorAll('.lang-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const lang = chip.innerText;
-      showToast(`📝 ${lang.toUpperCase()} syntax highlighting selected (demo)`, 'info');
+  document.querySelectorAll(".pw-toggle").forEach((b) => {
+    b.addEventListener("click", () => {
+      const inp = $(b.dataset.target);
+      const show = inp.type === "password";
+      inp.type = show ? "text" : "password";
+      b.innerHTML = show ? '<i class="far fa-eye-slash"></i>' : '<i class="far fa-eye"></i>';
+      b.setAttribute("aria-label", show ? "Hide password" : "Show password");
     });
   });
-  
-  // ========== TOPIC CHIPS (FUNCTIONAL) ==========
-  document.querySelectorAll('.topic-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const topic = chip.innerText;
-      showToast(`✨ "${topic}" added to your learning preferences`, 'success');
-    });
-  });
-  
-  // ========== GITHUB MOCK (FUNCTIONAL) ==========
-  document.getElementById('githubMockBtn').addEventListener('click', (e) => {
+
+  forms.login.addEventListener("submit", async (e) => {
     e.preventDefault();
-    showToast('🔐 GitHub authentication demo - Would redirect to GitHub OAuth in production', 'info');
-  });
-  
-  document.getElementById('githubStarBtn').addEventListener('click', (e) => {
-    e.preventDefault();
-    showToast('⭐ Thanks for starring Code2Video on GitHub! (Demo)', 'success');
-  });
-  
-  // ========== DOCUMENTATION BUTTON (FUNCTIONAL) ==========
-  document.getElementById('documentationBtn').addEventListener('click', () => {
-    showAlertMessage('📚 Documentation', 
-      `Code2Video User Guide:
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. Paste Python code in the editor
-2. Select language (English/Hindi/Marathi/Telugu)
-3. Choose explanation mode (Beginner/Advanced)
-4. Select voice speed and theme
-5. Click "Generate Video"
-6. Wait 1-2 minutes for AI processing
-7. Download MP4 with subtitles
-
-💡 Tip: Use docstrings for better AI narration!`);
-  });
-  
-  // ========== START NOW BUTTON (redirects to register) ==========
-  document.getElementById('startNowBtn').addEventListener('click', () => {
-    document.getElementById('registerTab').click();
-    showToast('📝 Switch to REGISTER tab to create your account!', 'success');
-  });
-  
-  // ========== TAB FUNCTIONALITY ==========
-  const loginTab = document.getElementById('loginTab');
-  const registerTab = document.getElementById('registerTab');
-  const loginForm = document.getElementById('loginForm');
-  const registerForm = document.getElementById('registerForm');
-  const formIcon = document.getElementById('formIcon');
-  const formSubtitle = document.getElementById('formSubtitle');
-  const toggleLink = document.getElementById('toggleLink');
-  const togglePrompt = document.getElementById('togglePrompt');
-
-  function setActiveTab(isLogin) {
-    if (isLogin) {
-      loginForm.classList.remove('hidden');
-      registerForm.classList.add('hidden');
-      loginTab.style.opacity = '1';
-      loginTab.style.color = '#ffffff';
-      registerTab.style.opacity = '0.6';
-      registerTab.style.color = '#94a3b8';
-      formIcon.className = 'fas fa-sign-in-alt text-4xl text-amber-400';
-      formSubtitle.innerText = 'access your account';
-      togglePrompt.innerText = "don't have an account?";
-      toggleLink.innerText = 'register';
-    } else {
-      registerForm.classList.remove('hidden');
-      loginForm.classList.add('hidden');
-      registerTab.style.opacity = '1';
-      registerTab.style.color = '#ffffff';
-      loginTab.style.opacity = '0.6';
-      loginTab.style.color = '#94a3b8';
-      formIcon.className = 'fas fa-user-plus text-4xl text-amber-400';
-      formSubtitle.innerText = 'create new account';
-      togglePrompt.innerText = 'already have an account?';
-      toggleLink.innerText = 'log in';
-    }
-    document.querySelectorAll('.error-msg, .success-msg').forEach(el => el.classList.add('hidden'));
-  }
-
-  loginTab.addEventListener('click', () => setActiveTab(true));
-  registerTab.addEventListener('click', () => setActiveTab(false));
-  toggleLink.addEventListener('click', (e) => {
-    e.preventDefault();
-    const isLoginVisible = !loginForm.classList.contains('hidden');
-    setActiveTab(isLoginVisible ? false : true);
-  });
-
-  function showError(elementId, message) {
-    const container = document.getElementById(elementId);
-    container.classList.remove('hidden');
-    container.querySelector('span').innerText = message;
-  }
-
-  // ========== LOAD PUBLIC PROJECTS ==========
-  async function loadPublicRecentProjects() {
+    clearErrors();
+    const email = $("loginEmail").value.trim();
+    const password = $("loginPassword").value;
+    let bad = false;
+    if (!validEmail(email)) { fieldError("loginEmail", "Enter a valid email address."); bad = true; }
+    if (!password) { fieldError("loginPassword", "Enter your password."); bad = true; }
+    if (bad) return;
+    const btn = $("loginBtn");
+    busy(btn, true);
     try {
-      const res = await fetch("/api/public_recent_videos");
-      const data = await res.json();
-      const container = document.getElementById("publicRecentProjects");
-      if (!data.length) {
-        container.innerHTML = `<p class="text-cyan-300">✨ No projects yet. Be the first to generate a video!</p>`;
+      const { ok, data } = await post("/api/login", { email, password });
+      if (ok) { window.location.href = "/dashboard"; return; }
+      alertMsg("loginAlert", data.message || "Incorrect email or password.");
+    } catch (_) {
+      alertMsg("loginAlert", "Couldn't reach the server. Check your connection and try again.");
+    }
+    busy(btn, false, "Sign in");
+  });
+
+  forms.register.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearErrors();
+    const name = $("regName").value.trim();
+    const email = $("regEmail").value.trim();
+    const password = $("regPassword").value;
+    let bad = false;
+    if (!name) { fieldError("regName", "Enter your name."); bad = true; }
+    if (!validEmail(email)) { fieldError("regEmail", "Enter a valid email address."); bad = true; }
+    if (password.length < 6) { fieldError("regPassword", "Use at least 6 characters."); bad = true; }
+    if (bad) return;
+    const btn = $("registerBtn");
+    busy(btn, true);
+    try {
+      const { ok, data } = await post("/api/register", { name, email, password });
+      if (ok) {
+        alertMsg("registerSuccess", "Account created. Taking you to your studio…");
+        setTimeout(() => (window.location.href = "/dashboard"), 700);
         return;
       }
-      container.innerHTML = "";
-      data.forEach(item => {
-        container.innerHTML += `
-          <div class="flex items-center justify-between text-white/90 border-l-4 border-amber-400 pl-4">
-            <span><i class="fas fa-file-video text-amber-400 mr-3"></i>${item.filename}</span>
-            <span class="bg-[#0f4052] px-3 py-1 text-sm text-amber-400 rounded">${item.created_at}</span>
-          </div>
-        `;
-      });
-    } catch (e) {
-      document.getElementById("publicRecentProjects").innerHTML = `<p class="text-cyan-300">📹 Sample: fibonacci_vis.mp4, quicksort_vis.mp4</p>`;
+      alertMsg("registerAlert", data.message === "User already exists"
+        ? "An account with this email already exists. Try signing in instead."
+        : (data.message || "Couldn't create your account. Please try again."));
+    } catch (_) {
+      alertMsg("registerAlert", "Couldn't reach the server. Check your connection and try again.");
     }
-  }
-
-  function goToDashboardWithCode(code) {
-    sessionStorage.setItem("prefill_code", code);
-    window.location.href = "/dashboard";
-  }
-
-  // ========== LOGIN ==========
-  document.getElementById('loginBtn').addEventListener('click', async (e) => {
-    e.preventDefault();
-    document.querySelectorAll('.error-msg, .success-msg').forEach(el => el.classList.add('hidden'));
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value;
-    if (!email) showError('loginEmailError', 'Email required');
-    if (!password) showError('loginPasswordError', 'Password required');
-    if (!email || !password) return;
-    const res = await fetch("/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password })
-    });
-    const data = await res.json();
-    if (data.status === "success") {
-      window.location.href = "/dashboard";
-    } else {
-      const err = document.getElementById('loginGeneralError');
-      err.classList.remove('hidden');
-      err.querySelector('span').innerText = data.message || "Invalid credentials. Try demo@example.com / 123456";
-    }
+    busy(btn, false, "Create account");
   });
 
-  // ========== REGISTER ==========
-  document.getElementById('registerBtn').addEventListener('click', async (e) => {
-    e.preventDefault();
-    document.querySelectorAll('.error-msg, .success-msg').forEach(el => el.classList.add('hidden'));
-    const name = document.getElementById('regName').value.trim();
-    const email = document.getElementById('regEmail').value.trim();
-    const password = document.getElementById('regPassword').value;
-    const confirm = document.getElementById('regConfirm').value;
-    let hasError = false;
-    if (!name) { showError('regNameError', 'Full name required'); hasError = true; }
-    if (!email) { showError('regEmailError', 'Email required'); hasError = true; }
-    if (!password) { showError('regPasswordError', 'Password required'); hasError = true; }
-    if (password.length < 6) { showError('regPasswordError', 'Minimum 6 characters required'); hasError = true; }
-    if (password !== confirm) { showError('regConfirmError', 'Passwords do not match'); hasError = true; }
-    if (hasError) return;
-    const res = await fetch("/api/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password })
-    });
-    const data = await res.json();
-    if (data.status === "success") {
-      const s = document.getElementById('registerSuccess');
-      s.classList.remove('hidden');
-      s.querySelector('span').innerText = "Account created successfully! Redirecting to dashboard...";
-      setTimeout(() => { window.location.href = "/dashboard"; }, 1500);
-    } else {
-      const err = document.getElementById('registerGeneralError');
-      err.classList.remove('hidden');
-      err.querySelector('span').innerText = data.message;
-    }
-  });
-
-  // ========== QUICK GENERATE ==========
-  const quickCodeInput = document.getElementById("quickCodeInput");
-  const quickCodeBtn = document.getElementById("quickCodeBtn");
-  const generateVideoHeroBtn = document.getElementById("generateVideoHeroBtn");
-  const dashboardPreviewBtn = document.getElementById("dashboardPreviewBtn");
-  const browseProjectsBtn = document.getElementById("browseProjectsBtn");
-  const copyExampleBtn = document.getElementById("copyExampleBtn");
-  const forgotBtn = document.getElementById("forgotBtn");
-
-  quickCodeBtn.addEventListener("click", () => {
-    const code = quickCodeInput.value.trim() || "x = 5\ny = 10\nprint(x + y)";
-    goToDashboardWithCode(code);
-  });
-
-  generateVideoHeroBtn.addEventListener("click", () => {
-    goToDashboardWithCode("x = 5\ny = 10\nprint(x + y)");
-  });
-
-  dashboardPreviewBtn.addEventListener("click", () => goToDashboardWithCode("x = 5\ny = 10\nprint(x + y)"));
-  browseProjectsBtn.addEventListener("click", loadPublicRecentProjects);
-
-  copyExampleBtn.addEventListener("click", async () => {
-    const code = "x = 5\ny = 10\nprint(x + y)";
-    try {
-      await navigator.clipboard.writeText(code);
-      showToast("📋 Example code copied to clipboard!", "success");
-    } catch (e) {
-      alert(code);
-    }
-  });
-
-  forgotBtn.addEventListener("click", () => {
-    showAlertMessage("🔐 Forgot Password", "Please contact your instructor or use 'Forgot Password' link in the full application.\n\nDemo credentials:\nEmail: demo@example.com\nPassword: 123456");
-  });
-
-  // Initialize
-  loadPublicRecentProjects();
-  setActiveTab(true);
+  setMode(new URLSearchParams(location.search).get("mode") === "register" ? "register" : "login");
 })();
 </script>
 </body>

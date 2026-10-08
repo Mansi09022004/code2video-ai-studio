@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Code2Video AI Studio — Turn Python code into narrated explainer videos</title>
+  <meta name="description" content="Paste Python code and get a narrated, step-by-step explainer video with variable tracking, subtitles and voiceover in English, Hindi, Marathi or Telugu.">
+  <meta name="theme-color" content="#060a14">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Code2Video AI Studio">
+  <meta property="og:description" content="Turn Python code into narrated, step-by-step explainer videos with AI.">
+  <meta property="og:image" content="{{ request.url_root }}static/img/og.jpg">
+  <meta property="og:url" content="{{ request.url_root }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="/static/favicon.ico">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="manifest" href="/static/site.webmanifest">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="/static/css/site.css">
+</head>
+<body>
+
+<header class="nav">
+  <div class="container nav-inner">
+    <a href="/" class="brand" aria-label="Code2Video home">
+      <span class="brand-mark"><i class="fas fa-play"></i></span>
+      <span>Code<b>2</b>Video</span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="https://github.com/Mansi09022004/code2video-ai-studio" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+    <div class="nav-cta">
+      {% if logged_in %}
+        <a href="/dashboard" class="btn btn-primary">Open studio <i class="fas fa-arrow-right"></i></a>
+      {% else %}
+        <a href="/login" class="btn btn-ghost">Sign in</a>
+        <a href="/login?mode=register" class="btn btn-primary">Get started</a>
+      {% endif %}
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div>
+        <span class="eyebrow"><i class="fas fa-wand-magic-sparkles"></i> AI-powered code explainer</span>
+        <h1>Turn Python code into <span class="grad-text">narrated explainer videos</span></h1>
+        <p class="lead">Paste a program and Code2Video walks through it step by step — highlighting each line, tracking variables and explaining the logic out loud, in your language.</p>
+        <div class="hero-actions">
+          <a href="{{ '/dashboard' if logged_in else '/login?mode=register' }}" class="btn btn-primary btn-lg">
+            <i class="fas fa-play"></i> {{ 'Open studio' if logged_in else 'Create a free video' }}
+          </a>
+          <a href="#how" class="btn btn-ghost btn-lg">See how it works</a>
+        </div>
+        <div class="hero-meta">
+          <span><i class="fas fa-language"></i> English · Hindi · Marathi · Telugu</span>
+          <span><i class="fas fa-closed-captioning"></i> Subtitles included</span>
+          <span><i class="fas fa-film"></i> HD MP4 download</span>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-inner">
+          <div class="preview-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="file">example.mp4</span></div>
+          {% if has_demo %}
+            <video src="/static/demo.mp4" poster="/static/img/preview.jpg" controls preload="none" playsinline aria-label="Example Code2Video output"></video>
+          {% else %}
+            <img src="/static/img/preview.jpg" alt="A frame from a generated video: code panel with the current line highlighted, a state panel tracking variable x = 5, and a subtitle explaining the step" width="1280" height="720" loading="eager">
+          {% endif %}
+        </div>
+        <div class="preview-tag"><i class="fas fa-microphone-lines"></i> AI voiceover + live variable tracking</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section id="how">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">How it works</span>
+        <h2>From code to video in three steps</h2>
+        <p>No editing, recording or slides. Just your code.</p>
+      </div>
+      <div class="steps">
+        <div class="card">
+          <span class="step-num">STEP 01</span>
+          <h3>Paste your Python code</h3>
+          <p>Anything from a two-line script to sorting and searching algorithms.</p>
+          <div class="code"><span class="k">def</span> <span class="n">add</span>(a, b):
+    <span class="k">return</span> a + b
+
+<span class="n">print</span>(add(<span class="s">2</span>, <span class="s">3</span>))</div>
+        </div>
+        <div class="card">
+          <span class="step-num">STEP 02</span>
+          <h3>Pick language and style</h3>
+          <p>Choose narration language, beginner or advanced explanations, voice speed and a visual theme.</p>
+        </div>
+        <div class="card">
+          <span class="step-num">STEP 03</span>
+          <h3>Watch, download, share</h3>
+          <p>AI plans each step, renders the scenes and adds a voiceover. Download the MP4 with subtitles in about a minute.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Features</span>
+        <h2>Built for learning, teaching and revision</h2>
+        <p>Every video explains <em>why</em> the code works, not just what it prints.</p>
+      </div>
+      <div class="features">
+        <div class="card"><div class="icon-chip"><i class="fas fa-list-ol"></i></div><h3>Step-by-step walkthrough</h3><p>Each scene focuses on one idea, with the active line highlighted in the code panel.</p></div>
+        <div class="card"><div class="icon-chip v"><i class="fas fa-cubes"></i></div><h3>Live variable tracking</h3><p>A state panel shows how values, lists and dictionaries change as the program runs.</p></div>
+        <div class="card"><div class="icon-chip"><i class="fas fa-diagram-project"></i></div><h3>Algorithm visuals</h3><p>Dedicated visuals for swaps, searches, loops, recursion, stacks and function calls.</p></div>
+        <div class="card"><div class="icon-chip v"><i class="fas fa-language"></i></div><h3>Multilingual narration</h3><p>Natural voiceover in English, Hindi, Marathi and Telugu, with matching subtitles.</p></div>
+        <div class="card"><div class="icon-chip"><i class="fas fa-comments"></i></div><h3>Ask-a-doubt assistant</h3><p>Stuck on a line? Ask the built-in AI tutor about the code you just visualised.</p></div>
+        <div class="card"><div class="icon-chip v"><i class="fas fa-gauge-high"></i></div><h3>Complexity analysis</h3><p>Get time and space complexity with best- and worst-case notes for your program.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section>
+    <div class="container">
+      <div class="cta-band">
+        <h2>Make your first video in a minute</h2>
+        <p>Free to use. Sign in with Google or create an account.</p>
+        <a href="{{ '/dashboard' if logged_in else '/login?mode=register' }}" class="btn btn-primary btn-lg"><i class="fas fa-play"></i> {{ 'Open studio' if logged_in else 'Get started — it’s free' }}</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="container footer-inner">
+    <span>© 2026 Code2Video AI Studio</span>
+    <nav aria-label="Footer">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="https://github.com/Mansi09022004/code2video-ai-studio" target="_blank" rel="noopener"><i class="fab fa-github"></i> GitHub</a>
+    </nav>
+  </div>
+</footer>
+
+</body>
+</html>

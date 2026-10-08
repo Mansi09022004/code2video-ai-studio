@@ -328,7 +328,7 @@ def login_api():
         session["user"] = email
         return jsonify({"status": "success"})
 
-    return jsonify({"status": "error", "message": "Invalid login"}), 401
+    return jsonify({"status": "error", "message": "Incorrect email or password."}), 401
 
 
 @app.route("/logout")
@@ -381,7 +381,8 @@ def google_callback():
         return redirect("/dashboard")
 
     except Exception as e:
-        return f"Google Login Error: {str(e)}"
+        print("Google login error:", e)
+        return redirect("/login?error=google")
 
 
 # ===============================
@@ -389,15 +390,21 @@ def google_callback():
 # ===============================
 
 @app.route("/")
-def splash():
-    """Splash screen - entry point of the application"""
-    return render_template("splash.html")
+def landing():
+    """Public landing page"""
+    has_demo = os.path.exists(os.path.join(app.static_folder, "demo.mp4"))
+    return render_template("landing.html", logged_in="user" in session, has_demo=has_demo)
 
 
 @app.route("/login")
 def login():
-    """Login page - shown after splash screen"""
-    return render_template("login.html")
+    """Sign in / create account page"""
+    if "user" in session:
+        return redirect("/dashboard")
+    error = None
+    if request.args.get("error") == "google":
+        error = "Google sign-in didn't complete. Please try again or use email."
+    return render_template("login.html", error=error)
 
 
 @app.route("/dashboard")
@@ -532,33 +539,11 @@ def api_recent_videos():
             "video_url": f"/download/{row['task_id']}",
             "is_favorite": is_favorite,
             "language": language,
-            "explain_mode": explain_mode
+            "explain_mode": explain_mode,
+            "original_code": original_code
         })
 
-    return jsonify(results[:6])
-
-
-@app.route("/api/public_recent_videos")
-def api_public_recent_videos():
-    conn = get_conn()
-    c = conn.cursor()
-
-    c.execute("""
-        SELECT filename, created_at
-        FROM videos
-        ORDER BY id DESC
-        LIMIT 5
-    """)
-    rows = c.fetchall()
-    conn.close()
-
-    return jsonify([
-        {
-            "filename": row["filename"],
-            "created_at": row["created_at"]
-        }
-        for row in rows
-    ])
+    return jsonify(results[:24])
 
 
 @app.route("/api/last_video")
