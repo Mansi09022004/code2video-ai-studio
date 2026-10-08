@@ -2885,6 +2885,60 @@ def _video_write_kwargs():
     )
 
 
+FAST_RENDER = os.getenv("FAST_RENDER", "false").lower() == "true"
+
+
+def _render_step_fast(bg_path, code_path, vars_path, subtitle_path, concept_path, audio_path,
+                      duration, scene_title, visual_type, output_text, narration, out_path):
+    import subprocess
+    import imageio_ffmpeg
+
+    safe_duration = max(0.7, duration - 0.04)
+
+    canvas = Image.open(bg_path).convert("RGBA")
+    if canvas.size != (VIDEO_W, VIDEO_H):
+        canvas = canvas.resize((VIDEO_W, VIDEO_H))
+
+    def _layer(path, pos, scale=1.0):
+        img = Image.open(path).convert("RGBA")
+        if scale != 1.0:
+            img = img.resize((int(img.width * scale), int(img.height * scale)))
+        canvas.alpha_composite(img, dest=(int(pos[0]), int(pos[1])))
+
+    layout = _choose_layout(scene_title, visual_type, output_text, narration)
+    _layer(code_path, (42, 122))
+    _layer(vars_path, (894, 122))
+    if layout == "result":
+        _layer(concept_path, (42, 490), scale=1.05)
+    else:
+        _layer(concept_path, (42, 470))
+    _layer(subtitle_path, (116, 620))
+
+    frame_path = out_path.replace(".mp4", ".png")
+    canvas.convert("RGB").crop((0, 0, VIDEO_W, VIDEO_H)).save(frame_path)
+
+    fps = os.getenv("VIDEO_FPS", "30")
+    try:
+        subprocess.run(
+            [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error",
+             "-loop", "1", "-framerate", fps, "-i", frame_path,
+             "-i", audio_path,
+             "-t", f"{safe_duration:.3f}",
+             "-c:v", "libx264", "-tune", "stillimage",
+             "-preset", os.getenv("VIDEO_PRESET", "slow"),
+             "-pix_fmt", "yuv420p", "-r", fps,
+             "-c:a", "aac", "-ar", "44100", "-ac", "2", "-b:a", "128k",
+             "-threads", os.getenv("VIDEO_THREADS", "4"),
+             out_path],
+            check=True
+        )
+    finally:
+        try:
+            os.remove(frame_path)
+        except Exception:
+            pass
+
+
 def _concat_segments(segment_paths, out_path, tid):
     """Join per-step mp4s with ffmpeg's concat demuxer (stream copy, no re-encode, tiny RAM)."""
     import subprocess
@@ -3086,6 +3140,18 @@ Python code:
             duration = max(0.9, audio_for_duration.duration)
             audio_for_duration.close()
 
+            if FAST_RENDER:
+                # Every layer of a step is a still image, so flatten them into ONE
+                # frame with PIL and let ffmpeg encode "still image + audio" directly.
+                # Far cheaper than MoviePy compositing 5 layers on every frame.
+                seg_path = os.path.join(TEMP_DIR, f"{tid}_seg_{i}.mp4")
+                _render_step_fast(bg_p, code_p, vars_p, sub_p, concept_p, aud_p, duration,
+                                  scene_title, visual_type, output_text, narration, seg_path)
+                temp_files.append(seg_path)
+                clips.append(seg_path)
+                previous_vars = dict(variables)
+                continue
+
             clip = _make_step_clip(
                 bg_p,
                 code_p,
@@ -3120,7 +3186,7 @@ Python code:
 
         out = os.path.join(VIDEO_DIR, f"{tid}.mp4")
 
-        if LOW_MEMORY_RENDER:
+        if FAST_RENDER or LOW_MEMORY_RENDER:
             _concat_segments(clips, out, tid)
         else:
             final = concatenate_videoclips(clips, method="compose")
