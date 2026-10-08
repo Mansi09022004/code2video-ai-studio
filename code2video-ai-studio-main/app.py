@@ -56,6 +56,9 @@ os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=GROQ_API_KEY)
 
+# llama-3.3-70b-versatile was retired from Groq free/dev tier (Aug 2026); model is configurable via env
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+
 # ===============================
 # GOOGLE OAUTH CONFIG
 # ===============================
@@ -1919,7 +1922,7 @@ Text:
 """
 
         completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",  # Updated
+            model=GROQ_MODEL,
             messages=[{"role": "user", "content": prompt}]
         )
 
@@ -2941,7 +2944,7 @@ Python code:
 
         # ✅ GROQ API CALL
         completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",  # ✅ NEW - working
+            model=GROQ_MODEL,
             messages=[{"role": "user", "content": prompt}]
         )
 
@@ -3418,7 +3421,7 @@ Code:
         # ✅ GROQ API CALL
         
         completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",  # Updated
+            model=GROQ_MODEL,
             messages=[{"role": "user", "content": prompt}]
         )
 
@@ -3460,7 +3463,7 @@ Selected line:
         # ✅ GROQ API CALL
         
         completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",  # Updated
+            model=GROQ_MODEL,
             messages=[{"role": "user", "content": prompt}]
         )
 
@@ -3513,7 +3516,7 @@ User question:
         # ✅ GROQ API CALL
        
         completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",  # Updated
+            model=GROQ_MODEL,
             messages=[{"role": "user", "content": prompt}]
         )
 
