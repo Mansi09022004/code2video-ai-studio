@@ -1554,11 +1554,54 @@ def _build_vars_overlay(variables, scene_type, output_text, changed_keys, output
 
     panel.save(output_path)
 
+def _split_runs(text):
+    """Split text into (is_latin, chunk) runs so each run can use a font that has its glyphs."""
+    runs = []
+    for ch in str(text):
+        latin = ord(ch) < 0x250 or ch in "\u2026\u2013\u2014\u2018\u2019\u201c\u201d"
+        if ch.isspace() and runs:
+            latin = runs[-1][0]
+        if runs and runs[-1][0] == latin:
+            runs[-1][1] += ch
+        else:
+            runs.append([latin, ch])
+    return runs
+
+
+def _mixed_width(draw, text, indic_font, latin_font):
+    return sum(draw.textlength(chunk, font=(latin_font if latin else indic_font)) for latin, chunk in _split_runs(text))
+
+
+def _draw_mixed(draw, xy, text, indic_font, latin_font, fill):
+    x, y = xy
+    for latin, chunk in _split_runs(text):
+        font = latin_font if latin else indic_font
+        draw.text((x, y), chunk, font=font, fill=fill)
+        x += draw.textlength(chunk, font=font)
+
+
+def _wrap_mixed(text, indic_font, latin_font, max_width, draw):
+    words = str(text).split()
+    if not words:
+        return [""]
+    lines, current = [], words[0]
+    for word in words[1:]:
+        trial = current + " " + word
+        if _mixed_width(draw, trial, indic_font, latin_font) <= max_width:
+            current = trial
+        else:
+            lines.append(current)
+            current = word
+    lines.append(current)
+    return lines
+
+
 def _build_subtitle_overlay(narration, step_no, total_steps, output_path, language="english"):
     simple = _simplify_subtitle(narration)
 
     subtitle_font = _load_font(23, bold=False, language=language)
     badge_font = _load_font(18, bold=True, language="english")
+    latin_font = _load_font(23, bold=False, language="english")
 
     panel = Image.new("RGBA", (1040, 92), (0, 0, 0, 0))
     draw = ImageDraw.Draw(panel)
@@ -1580,14 +1623,14 @@ def _build_subtitle_overlay(narration, step_no, total_steps, output_path, langua
     draw.text((30, by + 6), badge, font=badge_font, fill=(237, 255, 255))
 
     text_x = 18 + badge_w + 22
-    lines = _wrap_text(simple, subtitle_font, 1024 - text_x - 24, draw)
+    lines = _wrap_mixed(simple, subtitle_font, latin_font, 1024 - text_x - 24, draw)
     if len(lines) > 2:
         lines = lines[:2]
         lines[1] = lines[1].rstrip(".,;: ") + "\u2026"
     line_h = 30
     top = (box_h - line_h * len(lines)) // 2 + 1
     for idx, line in enumerate(lines):
-        draw.text((text_x, top + idx * line_h), line, font=subtitle_font, fill=(255, 255, 255))
+        _draw_mixed(draw, (text_x, top + idx * line_h), line, subtitle_font, latin_font, (255, 255, 255))
 
     panel.save(output_path)
 

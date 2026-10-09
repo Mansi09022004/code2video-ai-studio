@@ -161,6 +161,12 @@ print(result)</textarea>
           </div>
 
           <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
+            <div id="feedbackDone" class="feedback-done" hidden>
+              <i class="fas fa-circle-check"></i>
+              <div><b>Feedback submitted</b><span id="feedbackDoneText">Thanks for helping us improve.</span></div>
+              <button type="button" class="btn btn-ghost btn-sm" id="feedbackEditBtn">Change</button>
+            </div>
+            <div id="feedbackForm">
             <p class="panel-sub" style="margin:0 0 8px">How useful was this video?</p>
             <div class="rating" id="rating" role="radiogroup" aria-label="Rating">
               <button type="button" data-v="1" aria-label="1 star"><i class="fas fa-star"></i></button>
@@ -173,6 +179,7 @@ print(result)</textarea>
             <textarea id="feedbackComment" class="input" style="min-height:70px" placeholder="What worked well? What could be clearer? (optional)"></textarea>
             <div class="actions" style="margin-top:10px">
               <button type="button" class="btn btn-ghost btn-sm" id="submitFeedbackBtn"><i class="fas fa-paper-plane"></i> Send feedback</button>
+            </div>
             </div>
           </div>
         </section>
@@ -445,6 +452,7 @@ print(result)</textarea>
   }
   function showResult(v) {
     current.taskId = v.task_id; current.url = v.video_url;
+    resetFeedback();
     $("resultPanel").hidden = false;
     $("player").src = v.video_url + "?t=" + Date.now();
     $("dl").href = v.video_url;
@@ -509,9 +517,16 @@ print(result)</textarea>
     try {
       await api("/submit_feedback", { task_id: current.taskId, rating: String(rating), comment: $("feedbackComment").value.trim() });
       toast("Thanks for the feedback!");
-      $("feedbackComment").value = ""; rating = 0; stars.forEach((x) => x.classList.remove("on"));
+      $("feedbackDoneText").textContent = "You rated this video " + rating + " out of 5. Thanks for helping us improve.";
+      $("feedbackForm").hidden = true; $("feedbackDone").hidden = false;
     } catch (e) { if (e.message !== "auth") toast(e.message, "error"); }
   });
+
+  $("feedbackEditBtn").addEventListener("click", () => { $("feedbackDone").hidden = true; $("feedbackForm").hidden = false; });
+  function resetFeedback() {
+    $("feedbackComment").value = ""; rating = 0; stars.forEach((x) => x.classList.remove("on"));
+    $("feedbackForm").hidden = false; $("feedbackDone").hidden = true;
+  }
 
   // ---------- AI helpers (shown in the tutor panel) ----------
   function addQA(q, a) {

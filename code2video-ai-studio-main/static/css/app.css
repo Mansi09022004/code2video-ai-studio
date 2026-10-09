@@ -151,3 +151,10 @@ textarea.input { resize: vertical; min-height: 96px; }
 .onboard-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .next-ex { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 0; padding: 10px 14px; border-radius: 12px; background: rgba(167,139,250,.1); border: 1px solid rgba(167,139,250,.3); font-size: .92rem; }
 .next-ex i.fa-lightbulb { color: #fbbf24; margin-right: 6px; }
+
+#feedbackForm[hidden], .feedback-done[hidden] { display: none; }
+.feedback-done { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 12px; background: rgba(52,211,153,.1); border: 1px solid rgba(52,211,153,.35); }
+.feedback-done > i { color: #34d399; font-size: 1.4rem; }
+.feedback-done div { flex: 1; }
+.feedback-done b { display: block; }
+.feedback-done span { color: var(--text-2); font-size: .9rem; }
