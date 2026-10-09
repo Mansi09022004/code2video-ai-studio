@@ -711,6 +711,7 @@ def _load_font(size=24, bold=False, language="english"):
 
     return ImageFont.load_default()
 
+FONT_PT = _load_font(24, bold=True)
 FONT_XL = _load_font(38, bold=True)
 FONT_LG = _load_font(28, bold=True)
 FONT_MD = _load_font(22, bold=False)
@@ -1113,6 +1114,25 @@ def _extract_menu_lines_from_code(full_code):
     return cleaned[:4]
 
 
+def _has_recursion(code):
+    """True only if a function really calls itself (a call from outside its body does not count)."""
+    code = str(code or "")
+    try:
+        tree = ast.parse(code)
+    except Exception:
+        tree = None
+    if tree is not None:
+        for fn in ast.walk(tree):
+            if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                for node in ast.walk(fn):
+                    if isinstance(node, ast.Call):
+                        f = node.func
+                        if (isinstance(f, ast.Name) and f.id == fn.name) or (isinstance(f, ast.Attribute) and f.attr == fn.name and isinstance(f.value, ast.Name) and f.value.id == "self"):
+                            return True
+        return False
+    return False
+
+
 def _detect_algorithm(full_code, scene_type, variables):
     code_lower = str(full_code or "").lower()
     scene_lower = str(scene_type or "").lower()
@@ -1136,13 +1156,8 @@ def _detect_algorithm(full_code, scene_type, variables):
     if "stack" in code_lower or "stack" in scene_lower:
         return "stack"
 
-    fn_names = re.findall(r"def\s+([a-zA-Z_]\w*)\s*\(", code_lower)
-    for fn in fn_names:
-        start = code_lower.find(f"def {fn}")
-        if start != -1:
-            body = code_lower[start:].replace(f"def {fn}", "", 1)
-            if re.search(rf"\b{re.escape(fn)}\s*\(", body):
-                return "recursion"
+    if _has_recursion(full_code):
+        return "recursion"
 
     if "for " in code_lower or "while " in code_lower or "loop" in scene_lower:
         return "loop"
@@ -1363,21 +1378,23 @@ def _build_background(scene_title, output_path):
     img = _create_gradient_background(VIDEO_W, VIDEO_H)
     draw = ImageDraw.Draw(img)
 
-    draw.text((48, 34), "CODE2VIDEO AI STUDIO", font=FONT_XL, fill=(255, 255, 255))
-    draw.text((50, 78), scene_title[:48], font=FONT_MD, fill=(153, 238, 255))
+    draw.text((48, 22), "CODE2VIDEO AI STUDIO", font=FONT_XL, fill=(255, 255, 255))
+    draw.text((50, 66), scene_title[:48], font=FONT_MD, fill=(153, 238, 255))
 
-    draw.line((0, 114, VIDEO_W, 114), fill=(255, 255, 255, 35), width=1)
-    draw.line((890, 118, 890, 500), fill=(255, 255, 255, 24), width=1)
-    draw.line((58, 626, 1222, 626), fill=(255, 255, 255, 18), width=1)
+    draw.line((0, 100, VIDEO_W, 100), fill=(255, 255, 255, 35), width=1)
+    draw.line((890, 112, 890, 440), fill=(255, 255, 255, 24), width=1)
+    draw.line((58, 598, 1222, 598), fill=(255, 255, 255, 18), width=1)
 
     for x in [VIDEO_W - 150, VIDEO_W - 118, VIDEO_W - 86]:
-        draw.ellipse((x, 46, x + 12, 58), fill=(255, 191, 36))
+        draw.ellipse((x, 38, x + 12, 50), fill=(255, 191, 36))
 
     for i in range(6):
-        draw.line((56 + i * 180, 626, 56 + i * 180 + 120, 626), fill=(255, 191, 36), width=3)
+        draw.line((56 + i * 180, 598, 56 + i * 180 + 120, 598), fill=(255, 191, 36), width=3)
 
     img.save(output_path)
 
+
+POS_CODE, POS_VARS, POS_CONCEPT, POS_SUB = (42, 108), (894, 108), (42, 450), (116, 600)
 
 _CODE_METRICS = {}
 
@@ -1444,9 +1461,16 @@ def _build_code_overlay(full_code, active_line, focus_text, output_path):
     draw.text((28, 18), "CODE FLOW", font=FONT_LG, fill=(255, 255, 255))
     draw.text((28, 52), short_focus, font=FONT_SM, fill=(150, 226, 255))
 
-    font_size = 23
-    step, pad = _code_metrics(font_size)
     max_w, area_h = 676, 196
+    longest = max((len(l.expandtabs(4)) for l in all_lines), default=1)
+    want = min(total, 6)
+    font_size = 23
+    for fs in (31, 28, 26, 24):
+        st, pd = _code_metrics(fs)
+        if want * st + 2 * pd <= area_h and (longest + 5) * fs * 0.6 <= max_w:
+            font_size = fs
+            break
+    step, pad = _code_metrics(font_size)
     max_lines = max(4, min(8, (area_h - 2 * pad) // step))
 
     # show a window of lines around the active line instead of shrinking the whole program
@@ -1492,7 +1516,32 @@ def _build_code_overlay(full_code, active_line, focus_text, output_path):
     panel.save(output_path)
 
 
-def _build_vars_overlay(variables, scene_type, output_text, changed_keys, output_path):
+_GENERIC_TAKEAWAYS = {"", "none", "null", "program state updated.", "program state updated", "the program continues logically.",
+                      "the program continues logically", "program continues", "continues", "no output", "program produced output."}
+
+
+def _make_takeaway(output_text, focus_text, variables, changed_keys):
+    """A short, specific one-liner for the KEY TAKEAWAY box (never a vague filler sentence)."""
+    text = " ".join(str(output_text or "").split())
+    if text.lower() not in _GENERIC_TAKEAWAYS:
+        return text
+    focus = " ".join(str(focus_text or "").split())
+    m = re.match(r"def\s+(\w+)\s*\(([^)]*)\)", focus)
+    if m:
+        params = ", ".join(p.strip() for p in m.group(2).split(",") if p.strip())
+        return f"Defines {m.group(1)}({params}); it runs only when called"
+    m = re.match(r"class\s+(\w+)", focus)
+    if m:
+        return f"Defines the class {m.group(1)}"
+    items = [(k, v) for k, v in variables.items() if k in changed_keys and not _is_emptyish(v)][:2]
+    if items:
+        return ", ".join(f"{k} = {_safe_repr(v, 14)}" for k, v in items)
+    if focus:
+        return _short_focus_label(focus)
+    return "Moving on to the next step"
+
+
+def _build_vars_overlay(variables, scene_type, output_text, changed_keys, output_path, focus_text=""):
     panel = Image.new("RGBA", (360, 355), (0, 0, 0, 0))
     draw = ImageDraw.Draw(panel)
 
@@ -1540,17 +1589,20 @@ def _build_vars_overlay(variables, scene_type, output_text, changed_keys, output
             draw.text((40, y + 28 + idx * 15), line, font=FONT_VAR, fill=(236, 255, 255))
         y += 66
 
-    takeaway = output_text if str(output_text).strip().lower() not in {"", "none", "null"} else "Program state updated."
+    takeaway = _make_takeaway(output_text, focus_text, variables, changed_keys)
 
     if "found" in str(output_text).lower():
         result_idx = _extract_result_value(variables, output_text, "")
         takeaway = f"Target found at index {result_idx}" if result_idx is not None else "Target found successfully"
 
-    _rounded_box(draw, (24, 248, 312, 320), fill=(36, 25, 8, 230), outline=(255, 199, 90), width=2, radius=18)
-    draw.text((40, 262), "KEY TAKEAWAY", font=FONT_BADGE, fill=(255, 208, 112))
-    out_lines = _wrap_text(takeaway, FONT_SM, 240, draw)
-    for idx, line in enumerate(out_lines[:2]):
-        draw.text((40, 284 + idx * 16), line, font=FONT_SM, fill=(255, 246, 225))
+    _rounded_box(draw, (24, 230, 312, 322), fill=(36, 25, 8, 230), outline=(255, 199, 90), width=2, radius=18)
+    draw.text((40, 241), "KEY TAKEAWAY", font=FONT_BADGE, fill=(255, 208, 112))
+    out_lines = _wrap_text(takeaway, FONT_SM, 250, draw)
+    if len(out_lines) > 3:
+        out_lines = out_lines[:3]
+        out_lines[2] = out_lines[2].rstrip(".,;: ") + "\u2026"
+    for idx, line in enumerate(out_lines):
+        draw.text((40, 266 + idx * 19), line, font=FONT_SM, fill=(255, 246, 225))
 
     panel.save(output_path)
 
@@ -1599,9 +1651,9 @@ def _wrap_mixed(text, indic_font, latin_font, max_width, draw):
 def _build_subtitle_overlay(narration, step_no, total_steps, output_path, language="english"):
     simple = _simplify_subtitle(narration)
 
-    subtitle_font = _load_font(23, bold=False, language=language)
+    subtitle_font = _load_font(24, bold=False, language=language)
     badge_font = _load_font(18, bold=True, language="english")
-    latin_font = _load_font(23, bold=False, language="english")
+    latin_font = _load_font(24, bold=False, language="english")
 
     panel = Image.new("RGBA", (1040, 92), (0, 0, 0, 0))
     draw = ImageDraw.Draw(panel)
@@ -1627,7 +1679,7 @@ def _build_subtitle_overlay(narration, step_no, total_steps, output_path, langua
     if len(lines) > 2:
         lines = lines[:2]
         lines[1] = lines[1].rstrip(".,;: ") + "\u2026"
-    line_h = 30
+    line_h = 31
     top = (box_h - line_h * len(lines)) // 2 + 1
     for idx, line in enumerate(lines):
         _draw_mixed(draw, (text_x, top + idx * line_h), line, subtitle_font, latin_font, (255, 255, 255))
@@ -1692,8 +1744,8 @@ def _panel_base(title, subtitle, height=156):
     panel = Image.new("RGBA", (760, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(panel)
     _rounded_box(draw, (0, 0, 760, height - 8), fill=(8, 27, 38, 220), outline=(94, 224, 213, 120), width=2, radius=18)
-    draw.text((22, 10), title, font=FONT_LG, fill=(255, 255, 255))
-    draw.text((22, 36), subtitle, font=FONT_SM, fill=(173, 235, 255))
+    draw.text((22, 8), title, font=FONT_PT, fill=(255, 255, 255))
+    draw.text((22, 38), subtitle, font=FONT_SM, fill=(173, 235, 255))
     return panel, draw
 
 
@@ -1767,35 +1819,36 @@ def _build_loop_progress_overlay(payload, output_path):
 
 
 def _build_print_output_overlay(payload, output_path):
-    panel, draw = _panel_base("OUTPUT CONSOLE", "Program output is shown clearly", height=118)
+    panel, draw = _panel_base("OUTPUT CONSOLE", "What the program prints", height=124)
 
-    _rounded_box(draw, (24, 48, 736, 102), fill=(7, 14, 20, 235), outline=(94, 224, 213), width=2, radius=12)
+    _rounded_box(draw, (24, 62, 736, 112), fill=(7, 14, 20, 235), outline=(94, 224, 213), width=2, radius=12)
     console_text = _safe_repr(payload.get("text", "Program produced output."), 100)
 
     lines = _wrap_text(console_text, FONT_MD, 650, draw)
+    y0 = 74 if len(lines) == 1 else 66
     for idx, line in enumerate(lines[:2]):
-        draw.text((42, 60 + idx * 22), line, font=FONT_MD, fill=(210, 245, 210))
+        draw.text((42, y0 + idx * 22), line, font=FONT_MD, fill=(210, 245, 210))
 
     panel.save(output_path)
 
 
 def _build_waiting_input_overlay(payload, output_path):
-    panel, draw = _panel_base("WAITING FOR INPUT", "Program is waiting for the next user action", height=118)
+    panel, draw = _panel_base("WAITING FOR INPUT", "Program is waiting for the next user action", height=124)
 
     label = payload.get("label", "Waiting for input")
     menu_lines = payload.get("menu_lines", [])[:3]
 
-    _rounded_box(draw, (24, 48, 280, 102), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=12)
+    _rounded_box(draw, (24, 62, 280, 112), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=12)
     lines = _wrap_text(label, FONT_MD, 210, draw)
     for idx, line in enumerate(lines[:2]):
-        draw.text((40, 60 + idx * 20), line, font=FONT_MD, fill=(255, 255, 255))
+        draw.text((40, 68 + idx * 20), line, font=FONT_MD, fill=(255, 255, 255))
 
     if menu_lines:
         left = 300
-        top = 48
-        _rounded_box(draw, (left, top, 736, 102), fill=(7, 14, 20, 235), outline=(94, 224, 213), width=2, radius=12)
+        top = 62
+        _rounded_box(draw, (left, top, 736, 112), fill=(7, 14, 20, 235), outline=(94, 224, 213), width=2, radius=12)
         for i, line in enumerate(menu_lines[:2]):
-            draw.text((left + 14, top + 8 + i * 20), line[:48], font=FONT_TINY, fill=(210, 245, 210))
+            draw.text((left + 14, top + 6 + i * 20), line[:48], font=FONT_TINY, fill=(210, 245, 210))
 
     panel.save(output_path)
 
@@ -1817,11 +1870,11 @@ def _build_function_call_overlay(payload, output_path):
     panel, draw = _panel_base("FUNCTION CALL", "Execution is entering a function")
     name = payload.get("name", "function")
 
-    _rounded_box(draw, (60, 56, 250, 94), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=12)
-    draw.text((86, 68), name[:20], font=FONT_BADGE, fill=(255, 255, 255))
-    draw.line((250, 74, 370, 74), fill=(255, 201, 74), width=3)
-    draw.polygon([(370, 74), (360, 68), (360, 80)], fill=(255, 201, 74))
-    draw.text((392, 64), "entering body", font=FONT_BADGE, fill=(255, 227, 128))
+    _rounded_box(draw, (40, 66, 290, 108), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=12)
+    draw.text((58, 76), name[:22], font=FONT_BADGE, fill=(255, 255, 255))
+    draw.line((290, 87, 400, 87), fill=(255, 201, 74), width=3)
+    draw.polygon([(412, 87), (400, 80), (400, 94)], fill=(255, 201, 74))
+    draw.text((428, 77), "entering body", font=FONT_BADGE, fill=(255, 227, 128))
 
     panel.save(output_path)
 
@@ -2203,6 +2256,10 @@ def _fallback_visual_plan(full_code, scene_type, focus_text, output_text, narrat
     if algorithm == "recursion":
         return {"visual_type": "special_recursion", "payload": {}}
 
+    m_def = re.match(r"\s*def\s+(\w+)\s*\(([^)]*)\)", str(focus_text or ""))
+    if m_def:
+        return {"visual_type": "function_def", "payload": {"name": m_def.group(1), "params": [p.strip().split("=")[0].strip() for p in m_def.group(2).split(",") if p.strip()]}}
+
     if _looks_like_return_scene(focus_text, narration, output_text):
         return {
             "visual_type": "function_return",
@@ -2241,8 +2298,51 @@ def _fallback_visual_plan(full_code, scene_type, focus_text, output_text, narrat
     return {"visual_type": "generic_data", "payload": generic_payload}
 
 
+def _visual_fits(visual_type, full_code, variables):
+    """Stop the AI from picking an algorithm visual (e.g. recursion tree) for code that isn't that algorithm."""
+    code = str(full_code or "")
+    low = code.lower()
+    keys = {str(k).lower() for k in (variables or {}).keys()}
+    if visual_type == "special_recursion":
+        return _has_recursion(code)
+    if visual_type == "special_binary_search":
+        return "binary" in low or {"low", "high", "mid"} <= keys or {"left", "right", "mid"} <= keys
+    if visual_type == "special_sorting":
+        return any(w in low for w in ("sort", "swap", "bubble", "insertion", "selection")) or bool(re.search(r"(\w+)\[[^\]]+\]\s*,\s*\1\[[^\]]+\]\s*=", code))
+    if visual_type == "special_stack":
+        return "stack" in low or (".pop(" in low and ".append(" in low)
+    if visual_type == "special_linked_list":
+        return ".next" in low or "class node" in low
+    return True
+
+
+def _build_function_def_overlay(payload, output_path):
+    panel, draw = _panel_base("FUNCTION DEFINED", "Saved now, runs only when called")
+    name = str(payload.get("name", "function"))[:20]
+    params = [p for p in payload.get("params", []) if p][:4]
+    x = 24
+    _rounded_box(draw, (x, 64, x + 170, 108), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=12)
+    draw.text((x + 14, 74), f"{name}()", font=FONT_BADGE, fill=(255, 255, 255))
+    draw.line((x + 172, 86, x + 214, 86), fill=(255, 191, 36), width=3)
+    draw.polygon([(x + 214, 79), (x + 214, 93), (x + 226, 86)], fill=(255, 191, 36))
+    px = x + 240
+    if not params:
+        draw.text((px, 74), "takes no inputs", font=FONT_SM, fill=(218, 240, 247))
+    for p in params:
+        w = max(70, int(draw.textlength(p, font=FONT_BADGE)) + 36)
+        _rounded_box(draw, (px, 64, px + w, 108), fill=(24, 78, 99, 240), outline=(94, 224, 213), width=2, radius=12)
+        draw.text((px + 18, 74), p[:12], font=FONT_BADGE, fill=(255, 255, 255))
+        px += w + 12
+    draw.text((24, 118), "parameters are the inputs it will receive", font=FONT_SM, fill=(150, 226, 255))
+    panel.save(output_path)
+
+
 def _build_visual_overlay(visual_type, payload, full_code, curr_vars, prev_vars, output_text, narration, output_path):
     if visual_type == "print_output":
+        payload = dict(payload or {})
+        if str(payload.get("text", "")).strip().lower() in _GENERIC_TAKEAWAYS:
+            generic = str(output_text or "").strip().lower() in _GENERIC_TAKEAWAYS
+            payload["text"] = _extract_print_text(curr_vars, "" if generic else output_text, narration, "", full_code)
         _build_print_output_overlay(payload, output_path)
     elif visual_type == "waiting_input":
         _build_waiting_input_overlay(payload, output_path)
@@ -2260,6 +2360,8 @@ def _build_visual_overlay(visual_type, payload, full_code, curr_vars, prev_vars,
         _build_function_call_overlay(payload, output_path)
     elif visual_type == "conditional_branch":
         _build_conditional_branch_overlay(payload, output_path)
+    elif visual_type == "function_def":
+        _build_function_def_overlay(payload, output_path)
     elif visual_type == "special_binary_search":
         _build_binary_search_overlay(curr_vars, prev_vars, full_code, output_text, narration, output_path)
     elif visual_type == "special_sorting":
@@ -2369,19 +2471,19 @@ def _make_step_clip(
     bg_clip = bg_clip.with_effects([vfx.Resize(lambda t: 1 + 0.006 * t)])
 
     code_clip = ImageClip(code_path).with_duration(safe_duration)
-    code_clip = code_clip.with_position((42, 122))
+    code_clip = code_clip.with_position(POS_CODE)
 
     vars_clip = ImageClip(vars_path).with_duration(safe_duration)
-    vars_clip = vars_clip.with_position((894, 122))
+    vars_clip = vars_clip.with_position(POS_VARS)
 
     layout = _choose_layout(scene_title, visual_type, output_text, narration)
 
     concept_clip = ImageClip(concept_path).with_duration(safe_duration)
     subtitle_clip = ImageClip(subtitle_path).with_duration(safe_duration)
 
-    concept_clip = concept_clip.with_position((42, 466))
+    concept_clip = concept_clip.with_position(POS_CONCEPT)
 
-    subtitle_clip = subtitle_clip.with_position((116, 624))
+    subtitle_clip = subtitle_clip.with_position(POS_SUB)
 
     audio_clip = AudioFileClip(audio_path).subclipped(0, safe_duration)
 
@@ -2433,10 +2535,10 @@ def _render_step_fast(bg_path, code_path, vars_path, subtitle_path, concept_path
         canvas.alpha_composite(img, dest=(int(pos[0]), int(pos[1])))
 
     layout = _choose_layout(scene_title, visual_type, output_text, narration)
-    _layer(code_path, (42, 122))
-    _layer(vars_path, (894, 122))
-    _layer(concept_path, (42, 466))
-    _layer(subtitle_path, (116, 624))
+    _layer(code_path, POS_CODE)
+    _layer(vars_path, POS_VARS)
+    _layer(concept_path, POS_CONCEPT)
+    _layer(subtitle_path, POS_SUB)
 
     frame_path = out_path.replace(".mp4", ".png")
     canvas.convert("RGB").crop((0, 0, VIDEO_W, VIDEO_H)).save(frame_path)
@@ -2596,6 +2698,13 @@ Python code:
 
             changed_keys = _diff_variables(previous_vars, variables)
 
+            if ai_visual_type and ai_visual_type.lower() != "auto":
+                _vt = {"search_window": "special_binary_search", "swap_operation": "special_sorting", "linked_structure": "special_linked_list"}.get(ai_visual_type, ai_visual_type)
+                if _vt.startswith("special_") and not _visual_fits(_vt, code, variables):
+                    ai_visual_type = "auto"
+                elif re.match(r"\s*def\s", str(focus_text or "")) and _vt not in {"special_recursion"}:
+                    ai_visual_type = "auto"
+
             if not ai_visual_type or ai_visual_type.lower() == "auto":
                 plan = _fallback_visual_plan(
                     code,
@@ -2642,7 +2751,12 @@ Python code:
 
             _build_background(scene_title, bg_p)
             _build_code_overlay(code, _resolve_active_line(code, line_index, focus_text), focus_text, code_p)
-            _build_vars_overlay(variables, scene_type, output_text, changed_keys, vars_p)
+            _build_vars_overlay(variables, scene_type, output_text, changed_keys, vars_p, focus_text=focus_text)
+            if visual_type == "function_call" and not (payload or {}).get("name"):
+                m_call = re.search(r"(\w+)\s*\(([^)]*)\)", str(focus_text or ""))
+                if m_call and m_call.group(1) not in {"print", "input", "len", "range"}:
+                    payload = dict(payload or {})
+                    payload["name"] = f"{m_call.group(1)}({m_call.group(2)})"
             _build_visual_overlay(
                 visual_type,
                 payload,
