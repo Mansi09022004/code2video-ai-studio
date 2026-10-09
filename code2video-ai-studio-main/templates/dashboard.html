@@ -133,6 +133,7 @@ print(result)</textarea>
             <div class="metric"><span>Category</span><b id="analysisCategory">–</b></div>
             <div class="metric"><span>Time</span><b id="analysisTime">–</b></div>
             <div class="metric"><span>Space</span><b id="analysisSpace">–</b></div>
+            <p class="analysis-note" id="analysisNote" hidden></p>
           </div>
         </section>
 
@@ -306,6 +307,10 @@ print(result)</textarea>
     $("analysisCategory").textContent = d.category || "–";
     $("analysisTime").textContent = d.time_complexity || "–";
     $("analysisSpace").textContent = d.space_complexity || "–";
+    const note = $("analysisNote");
+    const bits = [d.explanation, d.best_case && d.worst_case && "Best: " + d.best_case.replace(/\s+–.*/, "") + " · Worst: " + d.worst_case + ".", "n = input size; extra memory only."].filter(Boolean);
+    note.textContent = bits.join(" ");
+    note.hidden = !d.explanation;
   }
   $("analyzeBtn").addEventListener("click", async () => {
     const code = codeInput.value.trim();

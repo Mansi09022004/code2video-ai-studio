@@ -74,6 +74,7 @@
 
 .analysis { margin-top: 18px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 @media (max-width: 700px) { .analysis { grid-template-columns: 1fr 1fr; } }
+.analysis-note { grid-column: 1 / -1; margin: 2px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted, #9aa8c4); }
 .metric { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; background: rgba(255,255,255,.02); }
 .metric span { display: block; color: var(--text-3); font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; }
 .metric b { display: block; margin-top: 4px; font-size: .98rem; word-break: break-word; }
