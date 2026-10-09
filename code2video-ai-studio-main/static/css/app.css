@@ -181,3 +181,28 @@ textarea.input { resize: vertical; min-height: 96px; }
 .preplay span { display: inline-flex; align-items: center; gap: 10px; padding: 12px 22px; border-radius: 999px; font: inherit; font-weight: 700; color: #06121a; background: var(--grad); box-shadow: 0 10px 30px -10px rgba(96,165,250,.7); }
 .preplay:hover span { filter: brightness(1.08); }
 .player:fullscreen .preplay { bottom: 51px; }
+
+/* side column */
+.side-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.quick-grid { display: grid; gap: 8px; }
+.quick-card { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: rgba(255,255,255,.02); border: 1px solid var(--border); border-radius: 12px; color: var(--text); font: inherit; padding: 10px 12px; cursor: pointer; transition: border-color .15s, background .15s, transform .15s; }
+.quick-card:hover { border-color: var(--border-strong); background: rgba(45,212,191,.06); transform: translateY(-1px); }
+.quick-card > i { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; background: rgba(139,92,246,.14); color: #c4b5fd; font-size: .9rem; }
+.quick-card b { display: block; font-size: .92rem; font-weight: 600; }
+.quick-card small { display: block; color: var(--text-3); font-size: .78rem; margin-top: 1px; }
+.act-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 2px; border-bottom: 1px solid var(--border); font-size: .9rem; color: var(--text-2); }
+.act-row:last-child { border-bottom: 0; }
+.act-row b { color: var(--text); font-weight: 600; }
+.tips { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.tips li { position: relative; padding-left: 18px; color: var(--text-2); font-size: .88rem; line-height: 1.5; }
+.tips li::before { content: ""; position: absolute; left: 2px; top: .6em; width: 6px; height: 6px; border-radius: 50%; background: var(--teal); }
+.tips code, .tips kbd { font-family: ui-monospace, Consolas, monospace; font-size: .82rem; padding: 1px 6px; border-radius: 6px; border: 1px solid var(--border); background: rgba(255,255,255,.04); color: var(--text); }
+/* progress stages */
+.stages { list-style: none; display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 10px; padding: 0; }
+.stages li { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border); font-size: .8rem; color: var(--text-3); }
+.stages li i { font-size: .72rem; }
+.stages li.active { color: var(--text); border-color: var(--border-strong); background: rgba(45,212,191,.08); }
+.stages li.active i { color: var(--teal); }
+.stages li.done { color: var(--text-2); }
+.stages li.done i { color: var(--teal); }
+.side-col .panel { margin: 0; }

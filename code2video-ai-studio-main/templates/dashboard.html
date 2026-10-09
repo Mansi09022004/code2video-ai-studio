@@ -134,6 +134,11 @@ print(result)</textarea>
           <div class="progress-card" id="statusBox" hidden aria-live="polite">
             <div class="progress-top"><b id="statusText">Starting…</b><span id="progressText">0%</span></div>
             <div class="progress-track"><div class="progress-fill" id="progressBar"></div></div>
+            <ol class="stages" id="stages" aria-label="Progress stages">
+              <li data-s="0"><i class="fas fa-circle"></i> Plan</li>
+              <li data-s="1"><i class="fas fa-circle"></i> Voice &amp; frames</li>
+              <li data-s="2"><i class="fas fa-circle"></i> Final video</li>
+            </ol>
             <p class="progress-note" id="progressNote">Writing the step-by-step plan with AI…</p>
           </div>
 
@@ -219,14 +224,42 @@ print(result)</textarea>
         </section>
       </div>
 
-      <!-- RIGHT: recent -->
-      <aside class="panel" aria-labelledby="recentTitle">
-        <div class="panel-head" style="margin-bottom:10px">
-          <h2 id="recentTitle"><i class="fas fa-clock-rotate-left"></i> Recent</h2>
-          <a href="#library" class="link-btn">View all</a>
-        </div>
-        <div class="recent-list" id="recentList"><p class="empty"><i class="fas fa-film"></i>Your videos will show up here.</p></div>
-      </aside>
+      <!-- RIGHT: recent + quick start + activity + tips -->
+      <div class="side-col">
+        <aside class="panel" aria-labelledby="recentTitle">
+          <div class="panel-head" style="margin-bottom:10px">
+            <h2 id="recentTitle"><i class="fas fa-clock-rotate-left"></i> Recent</h2>
+            <a href="#library" class="link-btn">View all</a>
+          </div>
+          <div class="recent-list" id="recentList"><p class="empty"><i class="fas fa-film"></i>Your videos will show up here.</p></div>
+        </aside>
+
+        <aside class="panel" aria-labelledby="quickTitle">
+          <div class="panel-head" style="margin-bottom:10px">
+            <h2 id="quickTitle"><i class="fas fa-bolt"></i> Quick start</h2>
+          </div>
+          <div class="quick-grid" id="quickGrid"></div>
+        </aside>
+
+        <aside class="panel" id="activityPanel" aria-labelledby="activityTitle" hidden>
+          <div class="panel-head" style="margin-bottom:10px">
+            <h2 id="activityTitle"><i class="fas fa-chart-simple"></i> Your activity</h2>
+          </div>
+          <div class="act-rows" id="activityRows"></div>
+        </aside>
+
+        <aside class="panel tips-panel" aria-labelledby="tipsTitle">
+          <div class="panel-head" style="margin-bottom:8px">
+            <h2 id="tipsTitle"><i class="fas fa-lightbulb"></i> Tips for better videos</h2>
+          </div>
+          <ul class="tips">
+            <li>Keep it under ~40 lines. One idea per video works best.</li>
+            <li>Use clear variable names like <code>low</code>, <code>mid</code>, <code>high</code>.</li>
+            <li>Click <b>Explain this line</b> to ask about any single line.</li>
+            <li>Press <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to generate quickly.</li>
+          </ul>
+        </aside>
+      </div>
     </div>
 
     <!-- Library -->
@@ -325,6 +358,32 @@ print(result)</textarea>
     codeInput.value = ex.code; titleInput.value = ex.title; toggleMenu(false); codeInput.focus(); scheduleAnalyze(0);
   });
 
+  // ---------- Quick start (right column) ----------
+  const QUICK_DESC = ["Functions and return values", "Halve the search window", "Swap neighbours until sorted", "A function that calls itself", "Push and pop", "Check items one by one"];
+  $("quickGrid").innerHTML = EXAMPLES.slice(0, 6).map((e, i) => `<button type="button" class="quick-card" data-i="${i}"><i class="fas ${e.icon}"></i><span><b>${esc(e.title)}</b><small>${QUICK_DESC[i] || ""}</small></span></button>`).join("");
+  $("quickGrid").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-i]"); if (!b) return;
+    const ex = EXAMPLES[+b.dataset.i];
+    codeInput.value = ex.code; titleInput.value = ex.title; scheduleAnalyze(0);
+    codeInput.scrollIntoView({ behavior: "smooth", block: "center" }); codeInput.focus();
+  });
+  function renderActivity(all) {
+    if (!all.length) { $("activityPanel").hidden = true; return; }
+    const langs = {}, modes = {};
+    all.forEach((v) => { const l = v.language || "english"; langs[l] = (langs[l] || 0) + 1; const m = v.explain_mode || "beginner"; modes[m] = (modes[m] || 0) + 1; });
+    const top = (o) => Object.entries(o).sort((a, b) => b[1] - a[1])[0][0];
+    const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+    const favs = all.filter((v) => v.is_favorite).length;
+    $("activityRows").innerHTML = [
+      ["Videos made", all.length], ["Favourites", favs],
+      ["Most used language", cap(top(langs))], ["Usual level", cap(top(modes))]
+    ].map(([k, v]) => `<div class="act-row"><span>${k}</span><b>${esc(String(v))}</b></div>`).join("");
+    $("activityPanel").hidden = false;
+  }
+  document.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && !genBtn.disabled) { e.preventDefault(); genBtn.click(); }
+  });
+
   // ---------- Onboarding + next suggestion ----------
   function useExample(i) {
     const ex = EXAMPLES[i];
@@ -398,6 +457,12 @@ print(result)</textarea>
     $("progressText").textContent = pct + "%";
     if (text) $("statusText").textContent = text.charAt(0).toUpperCase() + text.slice(1);
     const secs = Math.round((Date.now() - startedAt) / 1000);
+    const stage = pct >= 100 ? 3 : pct < 15 ? 0 : pct < 90 ? 1 : 2;
+    document.querySelectorAll("#stages li").forEach((li) => {
+      const n = +li.dataset.s;
+      li.className = n < stage ? "done" : n === stage ? "active" : "";
+      li.querySelector("i").className = "fas " + (n < stage ? "fa-circle-check" : n === stage ? "fa-spinner fa-spin" : "fa-circle");
+    });
     $("progressNote").textContent = pct < 15 ? "Writing the step-by-step plan with AI…"
       : pct < 90 ? `Rendering scenes and voiceover… (${secs}s)` : `Joining scenes into the final video… (${secs}s)`;
   }
@@ -651,6 +716,7 @@ print(result)</textarea>
     const [all, stats] = await Promise.all([api("/api/recent_videos").catch(() => []), api("/api/stats").catch(() => ({}))]);
     recentCache = all;
     renderRecent(all);
+    renderActivity(all);
     $("totalVideos").textContent = stats.total_videos ?? all.length;
     $("favCount").textContent = stats.favorite_count ?? all.filter((v) => v.is_favorite).length;
     $("avgRating").textContent = stats.total_feedback ? Number(stats.avg_rating).toFixed(1) : "–";
