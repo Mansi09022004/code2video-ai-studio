@@ -185,7 +185,6 @@
           <p class="muted">Built by <b>Mansi</b>. The source code is open and feedback is welcome.</p>
           <div class="about-links">
             <a class="btn btn-ghost" href="https://github.com/Mansi09022004/code2video-ai-studio" target="_blank" rel="noopener"><i class="fab fa-github"></i> View source</a>
-            <a class="btn btn-ghost" href="https://www.linkedin.com/in/mansi-gangji" target="_blank" rel="noopener"><i class="fab fa-linkedin"></i> LinkedIn</a>
             <a class="btn btn-ghost" href="https://github.com/Mansi09022004/code2video-ai-studio/issues" target="_blank" rel="noopener"><i class="fas fa-bug"></i> Report an issue</a>
           </div>
         </div>
@@ -225,6 +224,7 @@
 
 <script>
 (function(){
+  var nav=document.querySelector('.nav'); function setNav(){ if(nav) document.documentElement.style.setProperty('--nav-h', nav.offsetHeight+'px'); } setNav(); addEventListener('resize',setNav); addEventListener('load',setNav);
   var hero=document.getElementById('heroFrame'), reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
   fetch('/static/examples.json').then(function(r){return r.json()}).then(init).catch(function(){});
   function init(D){
