@@ -1381,7 +1381,10 @@ def _build_background(scene_title, output_path):
     draw.text((48, 22), "CODE2VIDEO AI STUDIO", font=FONT_XL, fill=(255, 255, 255))
     draw.text((50, 66), scene_title[:48], font=FONT_MD, fill=(153, 238, 255))
 
-    draw.line((0, 100, VIDEO_W, 100), fill=(255, 255, 255, 28), width=1)
+    for gx in range(0, VIDEO_W):
+        t = gx / VIDEO_W
+        a = int(150 * (1 - t) ** 1.4) + 10
+        draw.point((gx, 100), fill=(45, 212, 191, a))
 
     for x, col in zip([VIDEO_W - 150, VIDEO_W - 118, VIDEO_W - 86], [(45, 212, 191), (96, 165, 250), (167, 139, 250)]):
         draw.ellipse((x, 38, x + 12, 50), fill=col)
@@ -1554,16 +1557,16 @@ def _make_takeaway(output_text, focus_text, variables, changed_keys):
 
 
 def _build_vars_overlay(variables, scene_type, output_text, changed_keys, output_path, focus_text=""):
-    panel = Image.new("RGBA", (360, 355), (0, 0, 0, 0))
+    panel = Image.new("RGBA", (360, 445), (0, 0, 0, 0))
     draw = ImageDraw.Draw(panel)
 
     shadow = Image.new("RGBA", panel.size, (0, 0, 0, 0))
     shadow_draw = ImageDraw.Draw(shadow)
-    shadow_draw.rounded_rectangle((12, 14, 348, 343), radius=28, fill=(0, 0, 0, 120))
+    shadow_draw.rounded_rectangle((12, 14, 348, 433), radius=28, fill=(0, 0, 0, 120))
     shadow = shadow.filter(ImageFilter.GaussianBlur(12))
     panel.alpha_composite(shadow)
 
-    _rounded_box(draw, (0, 0, 336, 330), fill=(11, 29, 34, 240), outline=(167, 139, 250, 120), width=2, radius=28)
+    _rounded_box(draw, (0, 0, 336, 420), fill=(11, 29, 34, 240), outline=(167, 139, 250, 120), width=2, radius=28)
 
     draw.text((24, 18), "STATE PANEL", font=FONT_LG, fill=(255, 255, 255))
     scene_label = str(scene_type).upper().replace("_", " ")
@@ -1579,7 +1582,12 @@ def _build_vars_overlay(variables, scene_type, output_text, changed_keys, output
     if not shown_items:
         shown_items = _extract_non_empty_items(variables, limit=3)
 
-    shown_items = shown_items[:2]
+    for k, v in variables.items():
+        if len(shown_items) >= 3:
+            break
+        if not _is_emptyish(v) and all(k != sk for sk, _ in shown_items) and not str(k).startswith("_"):
+            shown_items.append((k, v))
+    shown_items = shown_items[:3]
 
     if not shown_items:
         _rounded_box(draw, (24, y, 312, y + 58), fill=(18, 48, 58, 220), outline=(94, 224, 213), width=2, radius=16)
@@ -1592,14 +1600,14 @@ def _build_vars_overlay(variables, scene_type, output_text, changed_keys, output
         outline = (167, 139, 250) if changed else (94, 224, 213)
         title_color = (221, 214, 254) if changed else (221, 214, 254)
 
-        _rounded_box(draw, (24, y, 312, y + 58), fill=box_fill, outline=outline, width=3 if changed else 2, radius=16)
-        draw.text((40, y + 8), str(key)[:18], font=FONT_BADGE, fill=title_color)
+        _rounded_box(draw, (24, y, 312, y + 66), fill=box_fill, outline=outline, width=3 if changed else 2, radius=16)
+        draw.text((40, y + 9), str(key)[:18], font=FONT_BADGE, fill=title_color)
 
         value_text = _safe_repr(val, 48)
         lines = _wrap_text(value_text, FONT_VAR, 230, draw)
         for idx, line in enumerate(lines[:2]):
-            draw.text((40, y + 28 + idx * 15), line, font=FONT_VAR, fill=(236, 255, 255))
-        y += 66
+            draw.text((40, y + 30 + idx * 16), line, font=FONT_VAR, fill=(236, 255, 255))
+        y += 76
 
     takeaway = _make_takeaway(output_text, focus_text, variables, changed_keys)
 
@@ -1607,14 +1615,14 @@ def _build_vars_overlay(variables, scene_type, output_text, changed_keys, output
         result_idx = _extract_result_value(variables, output_text, "")
         takeaway = f"Target found at index {result_idx}" if result_idx is not None else "Target found successfully"
 
-    _rounded_box(draw, (24, 230, 312, 322), fill=(26, 21, 52, 235), outline=(167, 139, 250), width=2, radius=18)
-    draw.text((40, 241), "KEY TAKEAWAY", font=FONT_BADGE, fill=(221, 214, 254))
+    _rounded_box(draw, (24, 316, 312, 410), fill=(26, 21, 52, 235), outline=(167, 139, 250), width=2, radius=18)
+    draw.text((40, 327), "KEY TAKEAWAY", font=FONT_BADGE, fill=(221, 214, 254))
     out_lines = _wrap_text(takeaway, FONT_SM, 250, draw)
     if len(out_lines) > 3:
         out_lines = out_lines[:3]
         out_lines[2] = out_lines[2].rstrip(".,;: ") + "\u2026"
     for idx, line in enumerate(out_lines):
-        draw.text((40, 266 + idx * 19), line, font=FONT_SM, fill=(237, 233, 254))
+        draw.text((40, 351 + idx * 19), line, font=FONT_SM, fill=(237, 233, 254))
 
     panel.save(output_path)
 
