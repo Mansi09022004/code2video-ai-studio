@@ -6,7 +6,10 @@
   <title>Studio — Code2Video AI Studio</title>
   <meta name="theme-color" content="#060a14">
   <meta name="robots" content="noindex">
-  <link rel="icon" href="/static/favicon.ico">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="icon" href="/static/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+  <link rel="manifest" href="/static/site.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -19,7 +22,7 @@
 <header class="app-bar">
   <div class="container app-bar-inner">
     <a href="/" class="brand" aria-label="Code2Video home">
-      <span class="brand-mark"><i class="fas fa-play"></i></span>
+      <img class="brand-mark" src="/static/img/logo.svg" width="36" height="36" alt="">
       <span>Code<b>2</b>Video</span>
     </a>
     <nav class="app-nav" aria-label="Studio">
@@ -54,6 +57,11 @@
     <div class="studio-grid" id="studio">
       <!-- LEFT: editor + result -->
       <div>
+        <div class="onboard" id="onboard" hidden>
+          <div><b><i class="fas fa-hand-sparkles"></i> New here? Make your first video in 3 clicks.</b>
+          <span>Pick an example, press Generate, and watch it in about a minute.</span></div>
+          <div class="onboard-chips" id="onboardChips"></div>
+        </div>
         <section class="panel" aria-labelledby="editorTitle">
           <div class="panel-head">
             <h2 id="editorTitle"><i class="fas fa-code"></i> New video</h2>
@@ -299,6 +307,26 @@ print(result)</textarea>
     codeInput.value = ex.code; titleInput.value = ex.title; toggleMenu(false); codeInput.focus(); scheduleAnalyze(0);
   });
 
+  // ---------- Onboarding + next suggestion ----------
+  function useExample(i) {
+    const ex = EXAMPLES[i];
+    codeInput.value = ex.code; titleInput.value = ex.title; codeInput.focus(); scheduleAnalyze(0);
+    $("onboard").hidden = true;
+    codeInput.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  $("onboardChips").innerHTML = [1, 2, 3].map(i => `<button type="button" class="btn btn-ghost btn-sm" data-i="${i}"><i class="fas ${EXAMPLES[i].icon}"></i> ${esc(EXAMPLES[i].title)}</button>`).join("");
+  $("onboardChips").addEventListener("click", (e) => { const b = e.target.closest("button[data-i]"); if (b) useExample(+b.dataset.i); });
+  function suggestNext(title) {
+    const used = String(title || "").toLowerCase();
+    const idx = [2, 3, 1, 4, 5].find(i => !used.includes(EXAMPLES[i].title.toLowerCase().split(" ")[0]));
+    let box = $("nextEx");
+    if (!box) { box = document.createElement("div"); box.id = "nextEx"; box.className = "next-ex"; $("videoReadyTitle").insertAdjacentElement("afterend", box); }
+    if (idx === undefined) { box.hidden = true; return; }
+    box.hidden = false;
+    box.innerHTML = `<span><i class="fas fa-lightbulb"></i> Next, try <b>${esc(EXAMPLES[idx].title)}</b></span><button type="button" class="btn btn-ghost btn-sm">Load it</button>`;
+    box.querySelector("button").onclick = () => { useExample(idx); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  }
+
   // ---------- Analyze ----------
   function renderAnalysis(d) {
     if (!d) return;
@@ -424,6 +452,7 @@ print(result)</textarea>
     $("dl").setAttribute("download", (v.title || "code2video").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_") + ".mp4");
     $("videoReadyTitle").innerHTML = '<i class="fas fa-circle-play"></i> ' + esc(v.title || "Your video");
     setFav(!!v.is_favorite);
+    suggestNext(v.title);
     renderSteps(v.steps_meta);
     loadDoubts();
     $("resultPanel").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -572,6 +601,7 @@ print(result)</textarea>
     $("videosLbl").textContent = Number($("totalVideos").textContent) === 1 ? "video created" : "videos created";
     $("favLbl").textContent = Number($("favCount").textContent) === 1 ? "favourite" : "favourites";
     $("statRow").hidden = !(Number($("totalVideos").textContent) > 0);
+    $("onboard").hidden = Number($("totalVideos").textContent) > 0;
     const last = all[0];
     if (last) {
       $("greetSub").innerHTML = `Last video: <strong>${esc(niceTitle(last))}</strong> · ${esc(fmtDate(last.created_at))} · <button type="button" class="link-btn" id="openLastBtn">Open it <i class="fas fa-arrow-right"></i></button>`;

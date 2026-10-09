@@ -10,7 +10,10 @@
   <meta property="og:description" content="Turn Python code into narrated, step-by-step explainer videos with AI.">
   <meta property="og:image" content="{{ request.url_root }}static/img/og.jpg">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="icon" href="/static/favicon.ico">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="icon" href="/static/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+  <link rel="manifest" href="/static/site.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -22,7 +25,7 @@
 <main class="auth-wrap">
   <div class="auth-card">
     <a href="/" class="brand" aria-label="Code2Video home">
-      <span class="brand-mark"><i class="fas fa-play"></i></span>
+      <img class="brand-mark" src="/static/img/logo.svg" width="36" height="36" alt="">
       <span>Code<b>2</b>Video</span>
     </a>
 

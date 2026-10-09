@@ -397,6 +397,16 @@ def landing():
     return render_template("landing.html", logged_in="user" in session, has_demo=has_demo)
 
 
+@app.route("/privacy")
+def privacy():
+    return render_template("legal.html", page="privacy", title="Privacy Policy")
+
+
+@app.route("/terms")
+def terms():
+    return render_template("legal.html", page="terms", title="Terms of Use")
+
+
 @app.route("/login")
 def login():
     """Sign in / create account page"""
@@ -767,8 +777,22 @@ def _first_sentence(text):
     return parts[0].strip()
 
 
-def _simplify_subtitle(text):
-    return _truncate_words(_first_sentence(text), 10)
+def _simplify_subtitle(text, max_words=22):
+    """Keep whole sentences; only cut (with an ellipsis) when the text is really long."""
+    text = " ".join(str(text or "").split())
+    if not text:
+        return ""
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    out = sentences[0]
+    for s in sentences[1:]:
+        if len((out + " " + s).split()) <= max_words:
+            out += " " + s
+        else:
+            break
+    words = out.split()
+    if len(words) > max_words:
+        out = " ".join(words[:max_words]).rstrip(",;:") + "\u2026"
+    return out
 
 
 def _is_emptyish(val):
@@ -782,35 +806,12 @@ def _is_emptyish(val):
     return False
 
 
-def _short_focus_label(text):
-    text = str(text or "").strip()
+def _short_focus_label(text, limit=34):
+    """Show the real line of code (shortened at a character limit), not a generic label."""
+    text = " ".join(str(text or "").split())
     if not text:
         return "Current step"
-
-    replacements = [
-        ("print(", "Print output"),
-        ("return ", "Return value"),
-        ("append(", "Append item"),
-        ("pop(", "Remove item"),
-        ("insert(", "Insert item"),
-        ("update(", "Update data"),
-        ("input(", "Read input"),
-        ("while ", "Loop step"),
-        ("for ", "Loop step"),
-        ("if ", "Condition check"),
-        ("elif ", "Condition check"),
-        ("else", "Else branch"),
-    ]
-
-    lowered = text.lower()
-    for src, dst in replacements:
-        if src.lower() in lowered:
-            return dst
-
-    words = text.replace("\n", " ").split()
-    if len(words) <= 4:
-        return text
-    return " ".join(words[:4])
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "\u2026"
 
 
 def _compact_value_description(value):
@@ -1338,8 +1339,8 @@ def _build_background(scene_title, output_path):
     draw.line((890, 118, 890, 500), fill=(255, 255, 255, 24), width=1)
     draw.line((58, 626, 1222, 626), fill=(255, 255, 255, 18), width=1)
 
-    for x in [62, 94, 126]:
-        draw.ellipse((x, 26, x + 12, 38), fill=(255, 191, 36))
+    for x in [VIDEO_W - 150, VIDEO_W - 118, VIDEO_W - 86]:
+        draw.ellipse((x, 46, x + 12, 58), fill=(255, 191, 36))
 
     for i in range(6):
         draw.line((56 + i * 180, 626, 56 + i * 180 + 120, 626), fill=(255, 191, 36), width=3)
@@ -1347,8 +1348,56 @@ def _build_background(scene_title, output_path):
     img.save(output_path)
 
 
+_CODE_METRICS = {}
+
+
+def _code_formatter(font_size, start=1):
+    return ImageFormatter(style="monokai", font_size=font_size, line_numbers=True, line_number_start=start)
+
+
+def _code_metrics(font_size=20):
+    """(line step in px, top padding in px) of pygments' image output, measured not guessed."""
+    if font_size not in _CODE_METRICS:
+        lexer = PythonLexer(stripnl=False)
+        h1 = Image.open(BytesIO(highlight("x", lexer, _code_formatter(font_size)))).height
+        h2 = Image.open(BytesIO(highlight("x\ny", lexer, _code_formatter(font_size)))).height
+        step = max(1, h2 - h1)
+        _CODE_METRICS[font_size] = (step, max(0, h1 - step))
+    return _CODE_METRICS[font_size]
+
+
+def _resolve_active_line(code, line_index, focus_text=""):
+    """Find the code line a step is about. The AI's line_index is often off by one, so the
+    focus text (the line it quotes) is used to snap to the right line."""
+    lines = str(code).split("\n")
+    try:
+        idx = int(line_index)
+    except Exception:
+        idx = 0
+    idx = max(0, min(idx, len(lines) - 1))
+    focus = " ".join(str(focus_text or "").split())
+    if len(focus) < 3:
+        return idx
+    norm = [" ".join(l.split()) for l in lines]
+    cands = [i for i, l in enumerate(norm) if l and (l == focus or focus in l or (len(l) >= 4 and l in focus))]
+    if cands:
+        return min(cands, key=lambda i: abs(i - idx))
+    import difflib
+    best, best_r = None, 0.0
+    for i, l in enumerate(norm):
+        if not l:
+            continue
+        r = difflib.SequenceMatcher(None, focus, l).ratio()
+        if r > best_r:
+            best, best_r = i, r
+    return best if best is not None and best_r >= 0.6 else idx
+
+
 def _build_code_overlay(full_code, active_line, focus_text, output_path):
     short_focus = _short_focus_label(focus_text)
+    all_lines = str(full_code).split("\n")
+    total = len(all_lines)
+    active_line = max(0, min(int(active_line), total - 1))
 
     panel = Image.new("RGBA", (760, 355), (0, 0, 0, 0))
     draw = ImageDraw.Draw(panel)
@@ -1362,45 +1411,52 @@ def _build_code_overlay(full_code, active_line, focus_text, output_path):
     _rounded_box(draw, (0, 0, 736, 330), fill=(10, 21, 37, 238), outline=(79, 209, 197, 120), width=2, radius=28)
 
     draw.text((28, 18), "CODE FLOW", font=FONT_LG, fill=(255, 255, 255))
-    draw.text((28, 52), short_focus[:40], font=FONT_SM, fill=(150, 226, 255))
+    draw.text((28, 52), short_focus, font=FONT_SM, fill=(150, 226, 255))
 
-    formatter = ImageFormatter(style="monokai", font_size=20, line_numbers=True)
-    code_img = Image.open(BytesIO(highlight(full_code, PythonLexer(), formatter))).convert("RGBA")
+    font_size = 23
+    step, pad = _code_metrics(font_size)
+    max_w, area_h = 676, 196
+    max_lines = max(4, min(8, (area_h - 2 * pad) // step))
 
-    max_w, max_h = 670, 185
-    code_img.thumbnail((max_w, max_h), Image.Resampling.LANCZOS)
+    # show a window of lines around the active line instead of shrinking the whole program
+    if total <= max_lines:
+        start, end = 0, total
+    else:
+        start = max(0, min(active_line - max_lines // 2, total - max_lines))
+        end = start + max_lines
+    window = "\n".join(l if l.strip() else " " for l in all_lines[start:end])
 
-    code_x = 28
-    code_y = 82
+    code_img = Image.open(BytesIO(highlight(window, PythonLexer(stripnl=False), _code_formatter(font_size, start + 1)))).convert("RGBA")
+    scale = 1.0
+    if code_img.width > max_w:
+        scale = max_w / code_img.width
+        code_img = code_img.resize((max_w, max(1, int(code_img.height * scale))), Image.Resampling.LANCZOS)
 
-    code_bg = Image.new("RGBA", (max_w + 26, max_h + 24), (17, 24, 39, 220))
-    cb_draw = ImageDraw.Draw(code_bg)
-    cb_draw.rounded_rectangle((0, 0, max_w + 26, max_h + 24), radius=18, fill=(17, 24, 39, 220))
-    panel.alpha_composite(code_bg, (code_x - 13, code_y - 12))
+    code_x, code_y = 28, 80
+    bg_h = code_img.height + 16
+    _rounded_box(draw, (code_x - 10, code_y - 8, code_x + max(code_img.width, 380) + 10, code_y - 8 + bg_h), fill=(39, 40, 34, 255), radius=12)
     panel.alpha_composite(code_img, (code_x, code_y))
 
-    line_y = code_y + max(0, active_line) * 26
-
+    # translucent band + accent bar on the active line
+    row = active_line - start
+    row_top = code_y + int((pad + row * step) * scale)
+    row_h = max(2, int(step * scale))
+    band_w = max(code_img.width, 380)
     glow = Image.new("RGBA", panel.size, (0, 0, 0, 0))
-    glow_draw = ImageDraw.Draw(glow)
-    glow_draw.rounded_rectangle(
-        (code_x - 4, line_y + 20, code_x + 500, line_y + 24),
-        radius=3,
-        fill=(255, 196, 54, 110)
-    )
-    glow = glow.filter(ImageFilter.GaussianBlur(3))
+    gd = ImageDraw.Draw(glow)
+    gd.rectangle((code_x - 2, row_top, code_x + band_w, row_top + row_h), fill=(255, 196, 54, 70))
+    gd.rectangle((code_x - 2, row_top, code_x + 2, row_top + row_h), fill=(255, 211, 92, 255))
     panel.alpha_composite(glow)
 
-    draw.line(
-        (code_x - 2, line_y + 22, code_x + 500, line_y + 22),
-        fill=(255, 211, 92, 220),
-        width=2
-    )
+    if total > max_lines:
+        tag = f"lines {start + 1}\u2013{end} of {total}"
+        tb = draw.textbbox((0, 0), tag, font=FONT_SM)
+        draw.text((708 - (tb[2] - tb[0]), 22), tag, font=FONT_SM, fill=(150, 226, 255))
 
     badge_box = draw.textbbox((0, 0), short_focus, font=FONT_CODE_BADGE)
-    badge_w = min(320, badge_box[2] - badge_box[0] + 34)
-    _rounded_box(draw, (28, 280, 28 + badge_w, 310), fill=(20, 94, 115, 235), outline=(94, 224, 213), width=2, radius=14)
-    draw.text((42, 288), short_focus[:28], font=FONT_CODE_BADGE, fill=(236, 255, 255))
+    badge_w = min(560, badge_box[2] - badge_box[0] + 34)
+    _rounded_box(draw, (28, 286, 28 + badge_w, 316), fill=(20, 94, 115, 235), outline=(94, 224, 213), width=2, radius=14)
+    draw.text((42, 293), short_focus, font=FONT_CODE_BADGE, fill=(236, 255, 255))
 
     panel.save(output_path)
 
@@ -1431,7 +1487,7 @@ def _build_vars_overlay(variables, scene_type, output_text, changed_keys, output
     if not shown_items:
         shown_items = _extract_non_empty_items(variables, limit=3)
 
-    shown_items = shown_items[:3]
+    shown_items = shown_items[:2]
 
     if not shown_items:
         _rounded_box(draw, (24, y, 312, y + 58), fill=(18, 48, 58, 220), outline=(94, 224, 213), width=2, radius=16)
@@ -1470,29 +1526,37 @@ def _build_vars_overlay(variables, scene_type, output_text, changed_keys, output
 def _build_subtitle_overlay(narration, step_no, total_steps, output_path, language="english"):
     simple = _simplify_subtitle(narration)
 
-    subtitle_font = _load_font(24, bold=False, language=language)
+    subtitle_font = _load_font(23, bold=False, language=language)
     badge_font = _load_font(18, bold=True, language="english")
 
-    panel = Image.new("RGBA", (1040, 78), (0, 0, 0, 0))
+    panel = Image.new("RGBA", (1040, 92), (0, 0, 0, 0))
     draw = ImageDraw.Draw(panel)
 
     shadow = Image.new("RGBA", panel.size, (0, 0, 0, 0))
     shadow_draw = ImageDraw.Draw(shadow)
-    shadow_draw.rounded_rectangle((8, 8, 1032, 70), radius=18, fill=(0, 0, 0, 110))
+    shadow_draw.rounded_rectangle((8, 8, 1032, 82), radius=18, fill=(0, 0, 0, 110))
     shadow = shadow.filter(ImageFilter.GaussianBlur(8))
     panel.alpha_composite(shadow)
 
-    _rounded_box(draw, (0, 0, 1024, 62), fill=(3, 10, 18, 235), outline=(80, 198, 255, 60), width=2, radius=18)
+    box_h = 74
+    _rounded_box(draw, (0, 0, 1024, box_h), fill=(3, 10, 18, 235), outline=(80, 198, 255, 60), width=2, radius=18)
 
     badge = f"STEP {step_no}/{total_steps}"
     badge_box = draw.textbbox((0, 0), badge, font=badge_font)
     badge_w = badge_box[2] - badge_box[0] + 22
-    _rounded_box(draw, (18, 18, 18 + badge_w, 50), fill=(18, 75, 95, 235), outline=(94, 224, 213), width=2, radius=10)
-    draw.text((30, 24), badge, font=badge_font, fill=(237, 255, 255))
+    by = (box_h - 32) // 2
+    _rounded_box(draw, (18, by, 18 + badge_w, by + 32), fill=(18, 75, 95, 235), outline=(94, 224, 213), width=2, radius=10)
+    draw.text((30, by + 6), badge, font=badge_font, fill=(237, 255, 255))
 
-    lines = _wrap_text(simple, subtitle_font, 760, draw)
-    for idx, line in enumerate(lines[:2]):
-        draw.text((170, 18 + idx * 22), line, font=subtitle_font, fill=(255, 255, 255))
+    text_x = 18 + badge_w + 22
+    lines = _wrap_text(simple, subtitle_font, 1024 - text_x - 24, draw)
+    if len(lines) > 2:
+        lines = lines[:2]
+        lines[1] = lines[1].rstrip(".,;: ") + "\u2026"
+    line_h = 30
+    top = (box_h - line_h * len(lines)) // 2 + 1
+    for idx, line in enumerate(lines):
+        draw.text((text_x, top + idx * line_h), line, font=subtitle_font, fill=(255, 255, 255))
 
     panel.save(output_path)
 
@@ -1550,7 +1614,7 @@ def _draw_old_pointer(draw, label, idx, x0, y_base, box_w=70):
     draw.text((x - 12, y_base - 26), label, font=FONT_SM, fill=(150, 170, 180))
 
 
-def _panel_base(title, subtitle, height=96):
+def _panel_base(title, subtitle, height=156):
     panel = Image.new("RGBA", (760, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(panel)
     _rounded_box(draw, (0, 0, 760, height - 8), fill=(8, 27, 38, 220), outline=(94, 224, 213, 120), width=2, radius=18)
@@ -1603,9 +1667,9 @@ def _build_dict_update_overlay(payload, output_path):
         fill = (42, 94, 120, 250) if highlight else (24, 78, 99, 240)
         outline = (255, 201, 74) if highlight else (94, 224, 213)
         left = x + (idx % 2) * 350
-        top = y + (idx // 2) * 22
-        _rounded_box(draw, (left, top, left + 320, top + 18), fill=fill, outline=outline, width=3 if highlight else 2, radius=8)
-        draw.text((left + 10, top + 1), f"{k}: {_safe_repr(v, 26)}", font=FONT_SM, fill=(255, 255, 255))
+        top = y + (idx // 2) * 44
+        _rounded_box(draw, (left, top, left + 320, top + 36), fill=fill, outline=outline, width=3 if highlight else 2, radius=10)
+        draw.text((left + 12, top + 8), f"{k}: {_safe_repr(v, 24)}", font=FONT_SM, fill=(255, 255, 255))
 
     panel.save(output_path)
 
@@ -1739,77 +1803,84 @@ def _build_binary_search_overlay(curr_vars, prev_vars, full_code, output_text, n
         _, arr = _extract_array_from_code(full_code)
     if arr is None:
         arr = [1, 3, 5, 7, 9]
+    arr = arr[:10]
+    n = len(arr)
 
     low = _safe_int(curr_vars.get("low"))
     high = _safe_int(curr_vars.get("high"))
     mid = _safe_int(curr_vars.get("mid"))
     target = curr_vars.get("target", "")
-    result_idx = _extract_result_value(curr_vars, output_text, narration)
+    tnorm = _normalize_value(target)
 
-    prev_low = _safe_int((prev_vars or {}).get("low"))
-    prev_high = _safe_int((prev_vars or {}).get("high"))
-    prev_mid = _safe_int((prev_vars or {}).get("mid"))
+    def _is_target(i):
+        return i is not None and 0 <= i < n and target != "" and str(_normalize_value(arr[i])) == str(tnorm)
 
-    found_mode = False
+    # "found" only when the middle element really equals the target (or the step reports that index)
+    found_idx = None
+    if _is_target(mid):
+        found_idx = mid
+    else:
+        explicit = _safe_int(curr_vars.get("result") if "result" in curr_vars else curr_vars.get("found_index"))
+        if _is_target(explicit):
+            found_idx = explicit
 
-    if result_idx is not None and 0 <= result_idx < min(len(arr), 10):
-        found_mode = True
-    elif mid is not None and (
-        "found" in str(output_text).lower()
-        or "found" in str(narration).lower()
-        or "target found" in str(output_text).lower()
-        or "target found" in str(narration).lower()
-    ):
-        result_idx = mid
-        found_mode = True
+    empty_range = low is not None and high is not None and low > high and found_idx is None
 
-    if found_mode:
-        panel, draw = _panel_base("SEARCH RESULT", "Target matched successfully")
+    if found_idx is not None:
+        title, sub = "SEARCH RESULT", f"Target {target} found at index {found_idx}"
+    elif empty_range:
+        title, sub = "SEARCH WINDOW", "Search range is empty, so the target is not in the list"
+    else:
+        title, sub = "SEARCH WINDOW", "L = low   M = mid   H = high"
 
-        dim_idxs = set(i for i in range(min(len(arr), 10)) if i != result_idx)
-        _draw_array_boxes(draw, arr, 22, 54, highlight_idxs={result_idx}, dim_idxs=dim_idxs)
-
-        match_x = 22 + result_idx * (70 + 8) + 35
-        _rounded_box(
-            draw,
-            (match_x - 42, 10, match_x + 42, 36),
-            fill=(20, 110, 70, 240),
-            outline=(255, 201, 74),
-            width=2,
-            radius=10
-        )
-        draw.text((match_x - 26, 15), "FOUND", font=FONT_BADGE, fill=(255, 255, 255))
-        draw.line((match_x, 36, match_x, 54), fill=(255, 191, 36), width=3)
-        draw.polygon([(match_x, 54), (match_x - 7, 44), (match_x + 7, 44)], fill=(255, 191, 36))
-
-        if target != "":
-            draw.text((566, 12), f"target={target}"[:18], font=FONT_BADGE, fill=(255, 227, 128))
-        draw.text((566, 36), f"index={result_idx}", font=FONT_BADGE, fill=(255, 227, 128))
-
-        panel.save(output_path)
-        return
-
-    panel, draw = _panel_base("SEARCH WINDOW", "Low, mid, and high pointers move")
-
-    dim_idxs = set()
-    if low is not None and high is not None:
-        for idx in range(min(len(arr), 10)):
-            if idx < low or idx > high:
-                dim_idxs.add(idx)
-
-    highlight = set(i for i in [low, mid, high] if i is not None)
-    _draw_array_boxes(draw, arr, 22, 54, highlight_idxs=highlight, dim_idxs=dim_idxs)
-
-    _draw_old_pointer(draw, "L", prev_low, 22, 108)
-    _draw_old_pointer(draw, "M", prev_mid, 22, 108)
-    _draw_old_pointer(draw, "H", prev_high, 22, 108)
-
-    _draw_pointer(draw, "L", low, 22, 18)
-    _draw_pointer(draw, "M", mid, 22, 18)
-    _draw_pointer(draw, "H", high, 22, 18)
-
+    panel, draw = _panel_base(title, sub, height=156)
     if target != "":
-        draw.text((620, 12), f"target={target}"[:16], font=FONT_BADGE, fill=(255, 227, 128))
+        tt = f"target = {target}"[:20]
+        tb = draw.textbbox((0, 0), tt, font=FONT_BADGE)
+        draw.text((738 - (tb[2] - tb[0]), 14), tt, font=FONT_BADGE, fill=(255, 227, 128))
+
+    bw = min(70, int((716 - 8 * (n - 1)) / max(1, n)))
+    x0, y_box, bh = 22, 87, 42
+    active = set(range(max(0, low), min(n - 1, high) + 1)) if (low is not None and high is not None) else set(range(n))
+
+    for idx, item in enumerate(arr):
+        x = x0 + idx * (bw + 8)
+        fill, outline, tcol, w = (24, 78, 99, 240), (94, 224, 213), (255, 255, 255), 2
+        if found_idx is not None:
+            if idx == found_idx:
+                fill, outline, tcol, w = (20, 110, 70, 250), (255, 201, 74), (255, 255, 255), 3
+            else:
+                fill, outline, tcol = (16, 42, 58, 230), (66, 130, 150), (170, 190, 200)
+        elif idx not in active:
+            fill, outline, tcol = (16, 42, 58, 230), (66, 130, 150), (150, 170, 180)
+        elif idx == mid:
+            fill, outline, w = (42, 94, 120, 250), (255, 201, 74), 3
+        _rounded_box(draw, (x, y_box, x + bw, y_box + bh), fill=fill, outline=outline, width=w, radius=10)
+        txt = str(item)[:6]
+        bb = draw.textbbox((0, 0), txt, font=FONT_BADGE)
+        draw.text((x + bw / 2 - (bb[2] - bb[0]) / 2, y_box + bh / 2 - (bb[3] - bb[1]) / 2 - 3), txt, font=FONT_BADGE, fill=tcol)
+        ib = draw.textbbox((0, 0), str(idx), font=FONT_SM)
+        draw.text((x + bw / 2 - (ib[2] - ib[0]) / 2, y_box + bh + 4), str(idx), font=FONT_SM, fill=(120, 150, 165))
+
+    # pointer labels above the boxes (labels that share a cell are merged, e.g. "L M")
+    labels = {}
+    if found_idx is not None:
+        labels[found_idx] = ["FOUND"]
+    else:
+        for name, val in (("L", low), ("M", mid), ("H", high)):
+            if val is not None and 0 <= val < n:
+                labels.setdefault(val, []).append(name)
+    for idx, names in labels.items():
+        label = " ".join(names)
+        cx = x0 + idx * (bw + 8) + bw / 2
+        lb = draw.textbbox((0, 0), label, font=FONT_BADGE)
+        lw = lb[2] - lb[0]
+        good = found_idx is not None
+        _rounded_box(draw, (cx - lw / 2 - 10, 58, cx + lw / 2 + 10, 78),
+                     fill=(20, 110, 70, 240) if good else (18, 75, 95, 235),
+                     outline=(255, 201, 74) if good else (94, 224, 213), width=2, radius=8)
+        draw.text((cx - lw / 2, 59), label, font=FONT_BADGE, fill=(255, 255, 255))
+        draw.polygon([(cx, y_box - 2), (cx - 6, y_box - 10), (cx + 6, y_box - 10)], fill=(255, 191, 36))
 
     panel.save(output_path)
 
@@ -1837,7 +1908,7 @@ def _build_sorting_overlay(curr_vars, prev_vars, full_code, output_path):
     compare_idxs = set(i for i in [i_idx, j_idx] if i is not None)
     compare_idxs.update(changed_idxs)
 
-    base_y = 96
+    base_y = 140
     x0 = 22
     max_val = max([1] + [abs(int(x)) if isinstance(x, (int, float)) or str(x).isdigit() else 1 for x in curr_arr[:10]])
 
@@ -1847,7 +1918,7 @@ def _build_sorting_overlay(curr_vars, prev_vars, full_code, output_path):
         except Exception:
             value_num = idx + 1
         x = x0 + idx * 72
-        h = max(18, int((value_num / max_val) * 40))
+        h = max(22, int((value_num / max_val) * 62))
         y = base_y - h
 
         fill = (24, 78, 99, 240)
@@ -1859,16 +1930,15 @@ def _build_sorting_overlay(curr_vars, prev_vars, full_code, output_path):
         _rounded_box(draw, (x, y, x + 54, base_y), fill=fill, outline=outline, width=3 if idx in compare_idxs else 2, radius=10)
 
         txt = str(item)[:4]
-        bbox = draw.textbbox((0, 0), txt, font=FONT_SM)
+        bbox = draw.textbbox((0, 0), txt, font=FONT_BADGE)
         tw = bbox[2] - bbox[0]
-        draw.text((x + 27 - tw / 2, y - 20), txt, font=FONT_SM, fill=(255, 255, 255))
+        draw.text((x + 27 - tw / 2, y + 2), txt, font=FONT_BADGE, fill=(255, 255, 255))
 
     if len(changed_idxs) >= 2:
-        x1 = x0 + changed_idxs[0] * 72 + 27
-        x2 = x0 + changed_idxs[1] * 72 + 27
-        draw.line((x1, 16, x2, 16), fill=(255, 201, 74), width=3)
-        draw.polygon([(x2, 16), (x2 - 8, 12), (x2 - 8, 20)], fill=(255, 201, 74))
-        draw.text((x1, 22), "swap", font=FONT_BADGE, fill=(255, 230, 168))
+        v1, v2 = curr_arr[changed_idxs[0]], curr_arr[changed_idxs[1]]
+        tag = f"swap  {v1} \u21c4 {v2}"
+        tb = draw.textbbox((0, 0), tag, font=FONT_BADGE)
+        draw.text((738 - (tb[2] - tb[0]), 14), tag, font=FONT_BADGE, fill=(255, 230, 168))
 
     panel.save(output_path)
 
@@ -1892,7 +1962,7 @@ def _build_stack_overlay(curr_vars, prev_vars, output_path):
         moving_value = prev_stack[-1] if prev_stack else None
 
     tower_x = 560
-    base_y = 102
+    base_y = 142
 
     stable_stack = curr_stack[:]
     if action == "push" and stable_stack:
@@ -1906,9 +1976,9 @@ def _build_stack_overlay(curr_vars, prev_vars, output_path):
     top_slot_y = base_y - len(stable_stack[-4:]) * 26
 
     if action == "push" and moving_value is not None:
-        _rounded_box(draw, (430, 30, 560, 54), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=8)
-        draw.text((444, 34), f"incoming {str(_normalize_value(moving_value))}"[:16], font=FONT_BADGE, fill=(255, 255, 255))
-        draw.line((560, 42, tower_x, top_slot_y + 10), fill=(255, 201, 74), width=3)
+        _rounded_box(draw, (400, 62, 530, 86), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=8)
+        draw.text((414, 66), f"incoming {str(_normalize_value(moving_value))}"[:16], font=FONT_BADGE, fill=(255, 255, 255))
+        draw.line((530, 74, tower_x, top_slot_y + 10), fill=(255, 201, 74), width=3)
         draw.polygon([(tower_x, top_slot_y + 10), (tower_x + 8, top_slot_y + 5), (tower_x + 8, top_slot_y + 15)], fill=(255, 201, 74))
         _rounded_box(draw, (tower_x, top_slot_y, tower_x + 130, top_slot_y + 22), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=8)
         draw.text((tower_x + 14, top_slot_y + 2), str(_normalize_value(moving_value))[:12], font=FONT_BADGE, fill=(255, 255, 255))
@@ -1916,10 +1986,10 @@ def _build_stack_overlay(curr_vars, prev_vars, output_path):
         pop_y = base_y - max(1, len(prev_stack[-4:])) * 26
         _rounded_box(draw, (tower_x, pop_y, tower_x + 130, pop_y + 22), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=8)
         draw.text((tower_x + 14, pop_y + 2), str(_normalize_value(moving_value))[:12], font=FONT_BADGE, fill=(255, 255, 255))
-        _rounded_box(draw, (430, 20, 560, 44), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=8)
-        draw.text((446, 24), f"popped {str(_normalize_value(moving_value))}"[:15], font=FONT_BADGE, fill=(255, 255, 255))
-        draw.line((tower_x, pop_y + 10, 560, 32), fill=(255, 201, 74), width=3)
-        draw.polygon([(560, 32), (552, 28), (552, 36)], fill=(255, 201, 74))
+        _rounded_box(draw, (400, 62, 530, 86), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=8)
+        draw.text((416, 66), f"popped {str(_normalize_value(moving_value))}"[:15], font=FONT_BADGE, fill=(255, 255, 255))
+        draw.line((tower_x, pop_y + 10, 530, 74), fill=(255, 201, 74), width=3)
+        draw.polygon([(530, 74), (538, 70), (538, 78)], fill=(255, 201, 74))
 
     panel.save(output_path)
 
@@ -1938,7 +2008,7 @@ def _build_linked_list_overlay(curr_vars, prev_vars, output_text, output_path):
             values = ["10", "20", "30"]
 
     x = 26
-    y = 60
+    y = 96
     box_w = 78
     current_idx = 0
 
@@ -1978,13 +2048,13 @@ def _build_linked_list_overlay(curr_vars, prev_vars, output_text, output_path):
 
     if prev_idx is not None and prev_idx != current_idx:
         old_x = 26 + prev_idx * 112 + box_w / 2
-        draw.text((old_x - 12, 18), "old", font=FONT_SM, fill=(150, 170, 180))
+        draw.text((old_x - 12, 66), "old", font=FONT_SM, fill=(150, 170, 180))
 
     current_x = 26 + current_idx * 112 + box_w / 2
-    _rounded_box(draw, (current_x - 28, 10, current_x + 28, 34), fill=(18, 75, 95, 235), outline=(94, 224, 213), width=2, radius=10)
-    draw.text((current_x - 18, 14), "temp", font=FONT_SM, fill=(255, 255, 255))
-    draw.line((current_x, 34, current_x, 58), fill=(255, 191, 36), width=3)
-    draw.polygon([(current_x, 58), (current_x - 7, 48), (current_x + 7, 48)], fill=(255, 191, 36))
+    _rounded_box(draw, (current_x - 28, 58, current_x + 28, 80), fill=(18, 75, 95, 235), outline=(94, 224, 213), width=2, radius=10)
+    draw.text((current_x - 18, 61), "temp", font=FONT_SM, fill=(255, 255, 255))
+    draw.line((current_x, 80, current_x, 92), fill=(255, 191, 36), width=3)
+    draw.polygon([(current_x, 94), (current_x - 7, 85), (current_x + 7, 85)], fill=(255, 191, 36))
 
     panel.save(output_path)
 
@@ -1997,7 +2067,7 @@ def _build_recursion_overlay(curr_vars, prev_vars, output_text, output_path):
     panel, draw = _panel_base(title, subtitle)
 
     depth = _extract_recursion_depth(curr_vars)
-    centers = [(84, 80), (204, 56), (204, 102), (332, 44), (332, 80), (332, 116)]
+    centers = [(84, 102), (204, 84), (204, 126), (332, 76), (332, 106), (332, 134)]
     nodes = min(max(depth + 1, 2), len(centers))
 
     for i, (cx, cy) in enumerate(centers[:nodes]):
@@ -2008,8 +2078,8 @@ def _build_recursion_overlay(curr_vars, prev_vars, output_text, output_path):
 
         fill = (42, 94, 120, 250) if return_mode and i == 0 else (24, 78, 99, 240)
         outline = (255, 201, 74)
-        draw.ellipse((cx - 24, cy - 18, cx + 24, cy + 18), fill=fill, outline=outline, width=2)
-        draw.text((cx - 12, cy - 8), f"f{i}", font=FONT_BADGE, fill=(255, 255, 255))
+        draw.ellipse((cx - 24, cy - 13, cx + 24, cy + 13), fill=fill, outline=outline, width=2)
+        draw.text((cx - 11, cy - 8), f"f{i}", font=FONT_BADGE, fill=(255, 255, 255))
 
     panel.save(output_path)
 
@@ -2235,15 +2305,9 @@ def _make_step_clip(
     concept_clip = ImageClip(concept_path).with_duration(safe_duration)
     subtitle_clip = ImageClip(subtitle_path).with_duration(safe_duration)
 
-    if layout == "result":
-        concept_clip = concept_clip.with_effects([vfx.Resize(1.05)])
-        concept_clip = concept_clip.with_position((42, 490))
-    elif layout == "terminal":
-        concept_clip = concept_clip.with_position((42, 470))
-    else:
-        concept_clip = concept_clip.with_position((42, 470))
+    concept_clip = concept_clip.with_position((42, 466))
 
-    subtitle_clip = subtitle_clip.with_position((116, 620))
+    subtitle_clip = subtitle_clip.with_position((116, 624))
 
     audio_clip = AudioFileClip(audio_path).subclipped(0, safe_duration)
 
@@ -2297,11 +2361,8 @@ def _render_step_fast(bg_path, code_path, vars_path, subtitle_path, concept_path
     layout = _choose_layout(scene_title, visual_type, output_text, narration)
     _layer(code_path, (42, 122))
     _layer(vars_path, (894, 122))
-    if layout == "result":
-        _layer(concept_path, (42, 490), scale=1.05)
-    else:
-        _layer(concept_path, (42, 470))
-    _layer(subtitle_path, (116, 620))
+    _layer(concept_path, (42, 466))
+    _layer(subtitle_path, (116, 624))
 
     frame_path = out_path.replace(".mp4", ".png")
     canvas.convert("RGB").crop((0, 0, VIDEO_W, VIDEO_H)).save(frame_path)
@@ -2378,7 +2439,7 @@ Analyze this Python code and return ONLY a JSON array with 5 to 7 steps.
 Each step must have exactly these keys:
 - scene_type
 - scene_title
-- line_index
+- line_index  (0-based index of the code line this step explains; focus_text must quote that exact line)
 - vars
 - narration
 - focus_text
@@ -2506,7 +2567,7 @@ Python code:
             })
 
             _build_background(scene_title, bg_p)
-            _build_code_overlay(code, line_index, focus_text, code_p)
+            _build_code_overlay(code, _resolve_active_line(code, line_index, focus_text), focus_text, code_p)
             _build_vars_overlay(variables, scene_type, output_text, changed_keys, vars_p)
             _build_visual_overlay(
                 visual_type,
@@ -2913,6 +2974,11 @@ def api_options():
             "theme": "ocean"
         }
     })
+
+
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, "static"), "favicon.ico")
 
 
 @app.route("/api/analyze_code", methods=["POST"])

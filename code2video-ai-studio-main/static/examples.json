@@ -1,0 +1,131 @@
+{
+ "binary-search": {
+  "title": "Binary search",
+  "tag": "Searching",
+  "cx": "O(log n)",
+  "code": "def binary_search(arr, target):\n    low, high = 0, len(arr) - 1\n    while low <= high:\n        mid = (low + high) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            low = mid + 1\n        else:\n            high = mid - 1\n    return -1\n\nnums = [3, 8, 12, 17, 21, 29, 34]\nprint(binary_search(nums, 21))",
+  "steps": [
+   {
+    "t": "Set the search range",
+    "n": "We start with two pointers: low at the first index and high at the last index.",
+    "img": "/static/img/examples/binary-search-1.jpg"
+   },
+   {
+    "t": "Check the middle",
+    "n": "mid is the average of low and high, so index 3. The value there is 17.",
+    "img": "/static/img/examples/binary-search-2.jpg"
+   },
+   {
+    "t": "17 is too small",
+    "n": "17 is less than the target 21, so everything left of mid can be ignored. low moves to mid + 1.",
+    "img": "/static/img/examples/binary-search-3.jpg"
+   },
+   {
+    "t": "Check the new middle",
+    "n": "Now mid is index 5 and the value is 29, which is bigger than 21.",
+    "img": "/static/img/examples/binary-search-4.jpg"
+   },
+   {
+    "t": "29 is too big",
+    "n": "So the target must be on the left. high moves to mid - 1.",
+    "img": "/static/img/examples/binary-search-5.jpg"
+   },
+   {
+    "t": "Found it",
+    "n": "mid is now index 4 and arr[4] is exactly 21. The search ends.",
+    "img": "/static/img/examples/binary-search-6.jpg"
+   },
+   {
+    "t": "Print the result",
+    "n": "The function returned index 4, so print shows 4.",
+    "img": "/static/img/examples/binary-search-7.jpg"
+   }
+  ]
+ },
+ "bubble-sort": {
+  "title": "Bubble sort",
+  "tag": "Sorting",
+  "cx": "O(n\u00b2)",
+  "code": "def bubble_sort(arr):\n    n = len(arr)\n    for i in range(n):\n        for j in range(n - i - 1):\n            if arr[j] > arr[j + 1]:\n                arr[j], arr[j + 1] = arr[j + 1], arr[j]\n    return arr\n\nprint(bubble_sort([5, 2, 9, 1]))",
+  "steps": [
+   {
+    "t": "Compare neighbours",
+    "n": "Bubble sort compares two neighbours at a time. First pair is 5 and 2.",
+    "img": "/static/img/examples/bubble-sort-1.jpg"
+   },
+   {
+    "t": "Swap them",
+    "n": "5 is bigger than 2, so the two values swap places.",
+    "img": "/static/img/examples/bubble-sort-2.jpg"
+   },
+   {
+    "t": "Next pair",
+    "n": "Now compare 5 and 9. They are already in order, so nothing changes.",
+    "img": "/static/img/examples/bubble-sort-3.jpg"
+   },
+   {
+    "t": "Compare 9 and 1",
+    "n": "9 is bigger than 1, so this pair is out of order.",
+    "img": "/static/img/examples/bubble-sort-4.jpg"
+   },
+   {
+    "t": "Biggest value bubbles up",
+    "n": "After the swap, 9 has bubbled to the end. It is now in its final place.",
+    "img": "/static/img/examples/bubble-sort-5.jpg"
+   },
+   {
+    "t": "Repeat for the rest",
+    "n": "The next passes fix 5, then 2 and 1, until the whole list is sorted.",
+    "img": "/static/img/examples/bubble-sort-6.jpg"
+   },
+   {
+    "t": "Print the result",
+    "n": "The sorted list is printed.",
+    "img": "/static/img/examples/bubble-sort-7.jpg"
+   }
+  ]
+ },
+ "recursion": {
+  "title": "Recursion: factorial",
+  "tag": "Recursion",
+  "cx": "O(n)",
+  "code": "def factorial(n):\n    if n == 0:\n        return 1\n    return n * factorial(n - 1)\n\nprint(factorial(3))",
+  "steps": [
+   {
+    "t": "Call factorial(3)",
+    "n": "We call factorial with n equal to 3.",
+    "img": "/static/img/examples/recursion-1.jpg"
+   },
+   {
+    "t": "Not the base case yet",
+    "n": "n is 3, not 0, so the function calls itself with n - 1.",
+    "img": "/static/img/examples/recursion-2.jpg"
+   },
+   {
+    "t": "Go one level deeper",
+    "n": "Now n is 2. It again waits for factorial(1).",
+    "img": "/static/img/examples/recursion-3.jpg"
+   },
+   {
+    "t": "Reach the base case",
+    "n": "When n is 0 the function stops calling itself and returns 1.",
+    "img": "/static/img/examples/recursion-4.jpg"
+   },
+   {
+    "t": "Unwind: 1 * 1",
+    "n": "The calls return one by one. factorial(1) is 1 times 1, which is 1.",
+    "img": "/static/img/examples/recursion-5.jpg"
+   },
+   {
+    "t": "Unwind: 3 * 2",
+    "n": "factorial(2) is 2, and factorial(3) is 3 times 2, which is 6.",
+    "img": "/static/img/examples/recursion-6.jpg"
+   },
+   {
+    "t": "Print the result",
+    "n": "The final answer 6 is printed.",
+    "img": "/static/img/examples/recursion-7.jpg"
+   }
+  ]
+ }
+}

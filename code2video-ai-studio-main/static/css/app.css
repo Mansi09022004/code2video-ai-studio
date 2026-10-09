@@ -143,3 +143,11 @@ textarea.input { resize: vertical; min-height: 96px; }
 @keyframes toastIn { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 [hidden] { display: none !important; }
+
+.onboard { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 18px; margin-bottom: 16px; border-radius: 14px; background: linear-gradient(135deg, rgba(45,212,191,.12), rgba(167,139,250,.12)); border: 1px solid rgba(45,212,191,.3); }
+.onboard[hidden], .next-ex[hidden] { display: none; }
+.onboard b { display: block; } .onboard b i { color: var(--teal); margin-right: 6px; }
+.onboard span { color: var(--text-2); font-size: .9rem; }
+.onboard-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.next-ex { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 0; padding: 10px 14px; border-radius: 12px; background: rgba(167,139,250,.1); border: 1px solid rgba(167,139,250,.3); font-size: .92rem; }
+.next-ex i.fa-lightbulb { color: #fbbf24; margin-right: 6px; }
