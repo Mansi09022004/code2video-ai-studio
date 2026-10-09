@@ -155,7 +155,6 @@ print(result)</textarea>
           <div class="player"><video id="player" controls playsinline preload="metadata"></video></div>
           <div class="result-actions">
             <a id="dl" class="btn btn-primary btn-sm" download><i class="fas fa-download"></i> Download MP4</a>
-            <button type="button" class="btn btn-ghost btn-sm" id="subtitlesBtn"><i class="fas fa-closed-captioning"></i> Subtitles (.srt)</button>
             <button type="button" class="btn btn-ghost btn-sm" id="shareBtn"><i class="fas fa-link"></i> Copy link</button>
             <button type="button" class="btn btn-ghost btn-sm btn-fav" id="favoriteBtn" aria-pressed="false"><i class="far fa-heart"></i> Add to favourites</button>
             <button type="button" class="btn btn-ghost btn-sm" id="editScriptBtn"><i class="fas fa-pen"></i> Edit code</button>
@@ -458,7 +457,6 @@ print(result)</textarea>
     $("resultPanel").scrollIntoView({ behavior: "smooth", block: "start" });
   }
   $("editScriptBtn").addEventListener("click", () => { codeInput.scrollIntoView({ behavior: "smooth", block: "center" }); codeInput.focus(); });
-  $("subtitlesBtn").addEventListener("click", () => { if (current.taskId) window.open(`/api/video/${current.taskId}/subtitles`, "_blank"); });
   $("shareBtn").addEventListener("click", async () => {
     if (!current.url) return;
     const link = location.origin + current.url;

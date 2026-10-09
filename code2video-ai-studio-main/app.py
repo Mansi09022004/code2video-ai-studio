@@ -636,29 +636,60 @@ def api_last_video():
 # VIDEO RENDER HELPERS
 # ===============================
 
+_INDIC_FONT_CACHE = {}
+
+
+def _find_indic_font(script):
+    """Find a font file that really contains Devanagari / Telugu glyphs.
+    Debian ships Noto either as static files (NotoSansDevanagari-Regular.ttf)
+    or as variable fonts (NotoSansDevanagari[wdth,wght].ttf), so search by pattern."""
+    if script in _INDIC_FONT_CACHE:
+        return _INDIC_FONT_CACHE[script]
+    import glob
+    import subprocess
+    name = "NotoSansTelugu" if script == "telugu" else "NotoSansDevanagari"
+    lang = "te" if script == "telugu" else "hi"
+    found = None
+    hits = []
+    for root in ("/usr/share/fonts", "/usr/local/share/fonts", os.path.expanduser("~/.fonts")):
+        hits += glob.glob(os.path.join(root, "**", name + "*.ttf"), recursive=True)
+    hits = [h for h in hits if not any(w in os.path.basename(h) for w in ("UI", "Condensed", "Semi", "Extra", "Display"))]
+    hits.sort(key=lambda p: (0 if "Regular" in p or "[" in p else 1, len(p)))
+    if hits:
+        found = hits[0]
+    if not found:
+        try:
+            out = subprocess.run(["fc-match", "-f", "%{file}", f":lang={lang}"], capture_output=True, text=True, timeout=5).stdout.strip()
+            if out and os.path.exists(out):
+                found = out
+        except Exception:
+            pass
+    _INDIC_FONT_CACHE[script] = found
+    return found
+
+
 def _load_font(size=24, bold=False, language="english"):
     candidates = []
 
     if language in {"hindi", "marathi", "telugu"}:
-        if bold:
-            candidates = [
-                "C:/Windows/Fonts/NirmalaB.ttf",
-                "C:/Windows/Fonts/Nirmala.ttf",
-                "C:/Windows/Fonts/mangal.ttf",
-                "C:/Windows/Fonts/gautami.ttf",
-                "/usr/share/fonts/truetype/noto/NotoSansDevanagari-Bold.ttf",
-                "/usr/share/fonts/truetype/noto/NotoSansTelugu-Bold.ttf",
-                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-            ]
-        else:
-            candidates = [
-                "C:/Windows/Fonts/Nirmala.ttf",
-                "C:/Windows/Fonts/mangal.ttf",
-                "C:/Windows/Fonts/gautami.ttf",
-                "/usr/share/fonts/truetype/noto/NotoSansDevanagari-Regular.ttf",
-                "/usr/share/fonts/truetype/noto/NotoSansTelugu-Regular.ttf",
-                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            ]
+        script = "telugu" if language == "telugu" else "devanagari"
+        found = _find_indic_font(script)
+        if found:
+            try:
+                font = ImageFont.truetype(found, size=size)
+                try:
+                    font.set_variation_by_name("Bold" if bold else "Regular")
+                except Exception:
+                    pass
+                return font
+            except Exception:
+                pass
+        candidates = [
+            "C:/Windows/Fonts/NirmalaB.ttf" if bold else "C:/Windows/Fonts/Nirmala.ttf",
+            "C:/Windows/Fonts/mangal.ttf",
+            "C:/Windows/Fonts/gautami.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        ]
     else:
         if bold:
             candidates = [

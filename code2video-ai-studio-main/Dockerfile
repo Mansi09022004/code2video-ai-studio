@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 # ffmpeg for moviepy + fonts for English/Hindi/Marathi/Telugu subtitles
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ffmpeg fonts-dejavu-core fonts-noto-core \
+        ffmpeg fontconfig libfribidi0 fonts-dejavu-core fonts-noto-core \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
