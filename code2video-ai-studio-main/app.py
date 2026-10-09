@@ -429,8 +429,11 @@ def dashboard():
         return redirect("/login")  # ← redirect to /login, not /
     
     user = get_current_user()
-    display_name = user["name"] if user else "User"
-    return render_template("dashboard.html", display_name=display_name)
+    if not user:
+        # Account no longer exists (e.g. the free-tier database was reset): sign out cleanly.
+        session.clear()
+        return redirect("/login")
+    return render_template("dashboard.html", display_name=user["name"])
 
 
 @app.route("/generated_videos/<filename>")
