@@ -10,9 +10,9 @@
     function size() {
       w = innerWidth; h = innerHeight;
       c.width = w * dpr; c.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      var n = Math.max(24, Math.min(60, Math.round(w * h / 28000)));
+      var n = Math.max(24, Math.min(85, Math.round(w * h / 20000)));
       dots = [];
-      for (var i = 0; i < n; i++) dots.push({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - .5) * .22, vy: (Math.random() - .5) * .22, r: Math.random() * 1.3 + .6, t: Math.random() < .7 ? 0 : 1 });
+      for (var i = 0; i < n; i++) dots.push({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - .5) * .3, vy: (Math.random() - .5) * .3, r: Math.random() * 1.6 + 1, t: Math.random() < .7 ? 0 : 1 });
     }
     function frame() {
       ctx.clearRect(0, 0, w, h);
@@ -23,9 +23,9 @@
         if (d.y < -10) d.y = h + 10; else if (d.y > h + 10) d.y = -10;
         for (var j = i + 1; j < dots.length; j++) {
           var e = dots[j], dx = d.x - e.x, dy = d.y - e.y, q = dx * dx + dy * dy;
-          if (q < 14400) { ctx.strokeStyle = "rgba(148,163,184," + (0.07 * (1 - q / 14400)).toFixed(3) + ")"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(e.x, e.y); ctx.stroke(); }
+          if (q < 22500) { ctx.strokeStyle = "rgba(148,163,184," + (0.2 * (1 - q / 22500)).toFixed(3) + ")"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(e.x, e.y); ctx.stroke(); }
         }
-        ctx.fillStyle = d.t ? "rgba(167,139,250,.35)" : "rgba(45,212,191,.35)";
+        ctx.fillStyle = d.t ? "rgba(167,139,250,.7)" : "rgba(45,212,191,.7)";
         ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, 6.2832); ctx.fill();
       }
       raf = requestAnimationFrame(frame);
