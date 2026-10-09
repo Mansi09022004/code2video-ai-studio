@@ -206,3 +206,4 @@ textarea.input { resize: vertical; min-height: 96px; }
 .stages li.done { color: var(--text-2); }
 .stages li.done i { color: var(--teal); }
 .side-col .panel { margin: 0; }
+.btn-danger:hover { color: var(--danger); border-color: rgba(251,113,133,.5); }

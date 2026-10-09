@@ -172,9 +172,11 @@ print(result)</textarea>
           </div>
           <div class="result-actions">
             <a id="dl" class="btn btn-primary btn-sm" download><i class="fas fa-download"></i> Download MP4</a>
-            <button type="button" class="btn btn-ghost btn-sm" id="shareBtn"><i class="fas fa-link"></i> Copy link</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="shareBtn"><i class="fas fa-share-nodes"></i> Share link</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="unshareBtn" hidden><i class="fas fa-link-slash"></i> Stop sharing</button>
             <button type="button" class="btn btn-ghost btn-sm btn-fav" id="favoriteBtn" aria-pressed="false"><i class="far fa-heart"></i> Add to favourites</button>
             <button type="button" class="btn btn-ghost btn-sm" id="editScriptBtn"><i class="fas fa-pen"></i> Edit code</button>
+            <button type="button" class="btn btn-ghost btn-sm btn-danger" id="deleteBtn"><i class="fas fa-trash"></i> Delete</button>
           </div>
 
           <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
@@ -536,17 +538,49 @@ print(result)</textarea>
     $("dl").setAttribute("download", (v.title || "code2video").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "_") + ".mp4");
     $("videoReadyTitle").innerHTML = '<i class="fas fa-circle-play"></i> ' + esc(v.title || "Your video");
     setFav(!!v.is_favorite);
+    $("unshareBtn").hidden = !v.is_public;
     suggestNext(v.title);
     renderSteps(v.steps_meta);
     loadDoubts();
     $("resultPanel").scrollIntoView({ behavior: "smooth", block: "start" });
   }
   $("editScriptBtn").addEventListener("click", () => { codeInput.scrollIntoView({ behavior: "smooth", block: "center" }); codeInput.focus(); });
+  async function setShare(on) {
+    const d = await api("/api/video/" + encodeURIComponent(current.taskId) + "/share", { public: on });
+    $("unshareBtn").hidden = !d.is_public;
+    return d;
+  }
   $("shareBtn").addEventListener("click", async () => {
-    if (!current.url) return;
-    const link = location.origin + current.url;
-    try { await navigator.clipboard.writeText(link); toast("Link copied to clipboard."); }
-    catch (_) { prompt("Copy this link:", link); }
+    if (!current.taskId) return;
+    try {
+      const d = await setShare(true);
+      const link = location.origin + d.share_url;
+      try { await navigator.clipboard.writeText(link); toast("Share link copied. Anyone with it can watch this video."); }
+      catch (_) { prompt("Copy this link:", link); }
+    } catch (e) { if (e.message !== "auth") toast(e.message, "error"); }
+  });
+  $("unshareBtn").addEventListener("click", async () => {
+    try { await setShare(false); toast("Sharing stopped. The old link no longer works."); }
+    catch (e) { if (e.message !== "auth") toast(e.message, "error"); }
+  });
+  let delArmed = 0;
+  $("deleteBtn").addEventListener("click", async () => {
+    const b = $("deleteBtn");
+    if (!current.taskId) return;
+    if (!delArmed) {
+      delArmed = setTimeout(() => { delArmed = 0; b.innerHTML = '<i class="fas fa-trash"></i> Delete'; }, 4000);
+      b.innerHTML = '<i class="fas fa-triangle-exclamation"></i> Click again to confirm';
+      return;
+    }
+    clearTimeout(delArmed); delArmed = 0; b.disabled = true;
+    try {
+      const res = await fetch("/api/video/" + encodeURIComponent(current.taskId), { method: "DELETE" });
+      if (res.status === 401) { window.location.href = "/login"; return; }
+      if (!res.ok) throw new Error("Could not delete this video.");
+      $("resultPanel").hidden = true; current = { taskId: null, url: null, fav: false };
+      toast("Video deleted."); refresh();
+    } catch (e) { toast(e.message, "error"); }
+    b.disabled = false; b.innerHTML = '<i class="fas fa-trash"></i> Delete';
   });
   $("favoriteBtn").addEventListener("click", async () => {
     if (!current.taskId) return;
@@ -690,7 +724,7 @@ print(result)</textarea>
     if (d.original_code) codeInput.value = d.original_code;
     titleInput.value = niceTitle(d) === "Untitled video" ? "" : niceTitle(d);
     if (d.complexity && Object.keys(d.complexity).length) renderAnalysis(d.complexity);
-    showResult({ task_id: d.task_id, video_url: d.video_url, title: niceTitle(d), is_favorite: d.is_favorite, steps_meta: d.steps_meta });
+    showResult({ task_id: d.task_id, video_url: d.video_url, title: niceTitle(d), is_favorite: d.is_favorite, is_public: d.is_public, steps_meta: d.steps_meta });
   }
   function renderRecent(list) {
     $("recentList").innerHTML = list.length ? list.slice(0, 5).map((v, i) => `
@@ -740,5 +774,6 @@ print(result)</textarea>
   refresh();
 })();
 </script>
+<script src="/static/js/bg.js" defer></script>
 </body>
 </html>

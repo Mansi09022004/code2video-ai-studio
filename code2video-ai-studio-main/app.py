@@ -226,6 +226,11 @@ def init_db():
     except:
         pass
 
+    try:
+        c.execute("ALTER TABLE videos ADD COLUMN is_public INTEGER DEFAULT 0")
+    except:
+        pass
+
     conn.commit()
     conn.close()
 
@@ -508,7 +513,7 @@ def api_recent_videos():
     c = conn.cursor()
 
     c.execute("""
-        SELECT v.task_id, v.title, v.filename, v.original_code, v.created_at, v.language, v.explain_mode,
+        SELECT v.task_id, v.title, v.filename, v.original_code, v.created_at, v.language, v.explain_mode, v.is_public,
                CASE WHEN f.id IS NOT NULL THEN 1 ELSE 0 END AS is_favorite
         FROM videos v
         LEFT JOIN favorites f
@@ -584,10 +589,91 @@ def api_video_details(tid):
         "language": row["language"] or "",
         "explain_mode": row["explain_mode"] or "",
         "is_favorite": bool(row["is_favorite"]),
+        "is_public": bool(row["is_public"]),
         "video_url": f"/download/{row['task_id']}",
         "steps_meta": meta.get("steps_meta", []),
         "complexity": meta.get("complexity", {})
     })
+
+
+_TID_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
+
+
+@app.route("/api/video/<tid>/share", methods=["POST"])
+def api_video_share(tid):
+    if "user" not in session:
+        return jsonify({"error": "Login required"}), 401
+    make_public = bool((request.get_json(silent=True) or {}).get("public", True))
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("UPDATE videos SET is_public=? WHERE task_id=? AND user_email=?", (1 if make_public else 0, tid, session["user"]))
+    changed = c.rowcount
+    conn.commit()
+    conn.close()
+    if not changed:
+        return jsonify({"error": "Video not found"}), 404
+    return jsonify({"is_public": make_public, "share_url": f"/v/{tid}"})
+
+
+@app.route("/v/<tid>")
+def shared_video_page(tid):
+    if not _TID_RE.match(tid):
+        return render_template("share.html", missing=True), 404
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("SELECT title, original_code, language, explain_mode FROM videos WHERE task_id=? AND is_public=1", (tid,))
+    row = c.fetchone()
+    conn.close()
+    if not row or not os.path.exists(os.path.join(VIDEO_DIR, f"{tid}.mp4")):
+        return render_template("share.html", missing=True), 404
+    title = row["title"] or "Code explainer video"
+    if re.match(r"^[0-9a-f-]{36}\.mp4$", title, re.I):
+        title = "Code explainer video"
+    return render_template("share.html", missing=False, title=title, code=row["original_code"] or "",
+                           language=row["language"] or "english", level=row["explain_mode"] or "beginner", tid=tid)
+
+
+@app.route("/v/<tid>/video")
+def shared_video_file(tid):
+    if not _TID_RE.match(tid):
+        return jsonify({"error": "Not found"}), 404
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("SELECT 1 FROM videos WHERE task_id=? AND is_public=1", (tid,))
+    ok = c.fetchone()
+    conn.close()
+    path = os.path.join(VIDEO_DIR, f"{tid}.mp4")
+    if not ok or not os.path.exists(path):
+        return jsonify({"error": "Not found"}), 404
+    return send_file(path, as_attachment=False, conditional=True)
+
+
+@app.route("/api/video/<tid>", methods=["DELETE"])
+def api_video_delete(tid):
+    if "user" not in session:
+        return jsonify({"error": "Login required"}), 401
+    if not _TID_RE.match(tid):
+        return jsonify({"error": "Video not found"}), 404
+    email = session["user"]
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("SELECT 1 FROM videos WHERE task_id=? AND user_email=?", (tid, email))
+    if not c.fetchone():
+        conn.close()
+        return jsonify({"error": "Video not found"}), 404
+    for table in ("favorites", "doubts", "feedback"):
+        c.execute(f"DELETE FROM {table} WHERE task_id=? AND user_email=?", (tid, email))
+    c.execute("DELETE FROM videos WHERE task_id=? AND user_email=?", (tid, email))
+    conn.commit()
+    conn.close()
+    for p in (os.path.join(VIDEO_DIR, f"{tid}.mp4"), _video_meta_path(tid),
+              os.path.join(VIDEO_DIR, f"{tid}_metadata.json"), os.path.join(SUBTITLE_DIR, f"{tid}.srt")):
+        try:
+            os.remove(p)
+        except OSError:
+            pass
+    tasks.pop(tid, None)
+    return jsonify({"deleted": True})
 
 
 @app.route("/api/last_video")
@@ -2570,6 +2656,8 @@ def _render_step_fast(bg_path, code_path, vars_path, subtitle_path, concept_path
              "-loop", "1", "-framerate", fps, "-i", frame_path,
              "-i", audio_path,
              "-t", f"{safe_duration:.3f}",
+             "-vf", (f"fade=t=in:st=0:d=0.18:color=0x060a14,"
+                     f"fade=t=out:st={max(0.0, safe_duration - 0.18):.3f}:d=0.18:color=0x060a14"),
              "-c:v", "libx264", "-tune", "stillimage",
              "-preset", os.getenv("VIDEO_PRESET", "slow"),
              "-pix_fmt", "yuv420p", "-r", fps,
