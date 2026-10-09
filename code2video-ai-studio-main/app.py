@@ -1381,15 +1381,10 @@ def _build_background(scene_title, output_path):
     draw.text((48, 22), "CODE2VIDEO AI STUDIO", font=FONT_XL, fill=(255, 255, 255))
     draw.text((50, 66), scene_title[:48], font=FONT_MD, fill=(153, 238, 255))
 
-    draw.line((0, 100, VIDEO_W, 100), fill=(255, 255, 255, 35), width=1)
-    draw.line((890, 112, 890, 440), fill=(255, 255, 255, 24), width=1)
-    draw.line((58, 598, 1222, 598), fill=(255, 255, 255, 18), width=1)
+    draw.line((0, 100, VIDEO_W, 100), fill=(255, 255, 255, 28), width=1)
 
-    for x in [VIDEO_W - 150, VIDEO_W - 118, VIDEO_W - 86]:
-        draw.ellipse((x, 38, x + 12, 50), fill=(255, 191, 36))
-
-    for i in range(6):
-        draw.line((56 + i * 180, 598, 56 + i * 180 + 120, 598), fill=(255, 191, 36), width=3)
+    for x, col in zip([VIDEO_W - 150, VIDEO_W - 118, VIDEO_W - 86], [(45, 212, 191), (96, 165, 250), (167, 139, 250)]):
+        draw.ellipse((x, 38, x + 12, 50), fill=col)
 
     img.save(output_path)
 
@@ -1399,8 +1394,25 @@ POS_CODE, POS_VARS, POS_CONCEPT, POS_SUB = (42, 108), (894, 108), (42, 450), (11
 _CODE_METRICS = {}
 
 
+def _make_code_style():
+    from pygments.styles import get_style_by_name
+    try:
+        base = get_style_by_name("one-dark")
+    except Exception:
+        base = get_style_by_name("monokai")
+
+    class C2VStyle(base):
+        background_color = "#0c1424"
+
+    return C2VStyle
+
+
+_CODE_STYLE = _make_code_style()
+
+
 def _code_formatter(font_size, start=1):
-    return ImageFormatter(style="monokai", font_size=font_size, line_numbers=True, line_number_start=start)
+    return ImageFormatter(style=_CODE_STYLE, font_size=font_size, line_numbers=True, line_number_start=start,
+                          line_number_bg="#0c1424", line_number_fg="#4b5b78", line_number_separator=False)
 
 
 def _code_metrics(font_size=20):
@@ -1489,7 +1501,7 @@ def _build_code_overlay(full_code, active_line, focus_text, output_path):
 
     code_x, code_y = 28, 80
     bg_h = code_img.height + 16
-    _rounded_box(draw, (code_x - 10, code_y - 8, code_x + max(code_img.width, 380) + 10, code_y - 8 + bg_h), fill=(39, 40, 34, 255), radius=12)
+    _rounded_box(draw, (code_x - 10, code_y - 8, code_x + max(code_img.width, 380) + 10, code_y - 8 + bg_h), fill=(12, 20, 36, 255), radius=12)
     panel.alpha_composite(code_img, (code_x, code_y))
 
     # translucent band + accent bar on the active line
@@ -1499,8 +1511,8 @@ def _build_code_overlay(full_code, active_line, focus_text, output_path):
     band_w = max(code_img.width, 380)
     glow = Image.new("RGBA", panel.size, (0, 0, 0, 0))
     gd = ImageDraw.Draw(glow)
-    gd.rectangle((code_x - 2, row_top, code_x + band_w, row_top + row_h), fill=(255, 196, 54, 70))
-    gd.rectangle((code_x - 2, row_top, code_x + 2, row_top + row_h), fill=(255, 211, 92, 255))
+    gd.rectangle((code_x - 2, row_top, code_x + band_w, row_top + row_h), fill=(45, 212, 191, 55))
+    gd.rectangle((code_x - 2, row_top, code_x + 2, row_top + row_h), fill=(94, 234, 212, 255))
     panel.alpha_composite(glow)
 
     if total > max_lines:
@@ -1551,11 +1563,11 @@ def _build_vars_overlay(variables, scene_type, output_text, changed_keys, output
     shadow = shadow.filter(ImageFilter.GaussianBlur(12))
     panel.alpha_composite(shadow)
 
-    _rounded_box(draw, (0, 0, 336, 330), fill=(11, 29, 34, 240), outline=(251, 191, 36, 120), width=2, radius=28)
+    _rounded_box(draw, (0, 0, 336, 330), fill=(11, 29, 34, 240), outline=(167, 139, 250, 120), width=2, radius=28)
 
     draw.text((24, 18), "STATE PANEL", font=FONT_LG, fill=(255, 255, 255))
     scene_label = str(scene_type).upper().replace("_", " ")
-    draw.text((24, 54), scene_label[:24], font=FONT_BADGE, fill=(255, 201, 74))
+    draw.text((24, 54), scene_label[:24], font=FONT_BADGE, fill=(167, 139, 250))
 
     y = 86
 
@@ -1577,8 +1589,8 @@ def _build_vars_overlay(variables, scene_type, output_text, changed_keys, output
     for key, val in shown_items:
         changed = key in changed_keys
         box_fill = (24, 78, 99, 240) if changed else (18, 48, 58, 220)
-        outline = (255, 214, 92) if changed else (94, 224, 213)
-        title_color = (255, 225, 122) if changed else (255, 216, 107)
+        outline = (167, 139, 250) if changed else (94, 224, 213)
+        title_color = (221, 214, 254) if changed else (221, 214, 254)
 
         _rounded_box(draw, (24, y, 312, y + 58), fill=box_fill, outline=outline, width=3 if changed else 2, radius=16)
         draw.text((40, y + 8), str(key)[:18], font=FONT_BADGE, fill=title_color)
@@ -1595,14 +1607,14 @@ def _build_vars_overlay(variables, scene_type, output_text, changed_keys, output
         result_idx = _extract_result_value(variables, output_text, "")
         takeaway = f"Target found at index {result_idx}" if result_idx is not None else "Target found successfully"
 
-    _rounded_box(draw, (24, 230, 312, 322), fill=(36, 25, 8, 230), outline=(255, 199, 90), width=2, radius=18)
-    draw.text((40, 241), "KEY TAKEAWAY", font=FONT_BADGE, fill=(255, 208, 112))
+    _rounded_box(draw, (24, 230, 312, 322), fill=(26, 21, 52, 235), outline=(167, 139, 250), width=2, radius=18)
+    draw.text((40, 241), "KEY TAKEAWAY", font=FONT_BADGE, fill=(221, 214, 254))
     out_lines = _wrap_text(takeaway, FONT_SM, 250, draw)
     if len(out_lines) > 3:
         out_lines = out_lines[:3]
         out_lines[2] = out_lines[2].rstrip(".,;: ") + "\u2026"
     for idx, line in enumerate(out_lines):
-        draw.text((40, 266 + idx * 19), line, font=FONT_SM, fill=(255, 246, 225))
+        draw.text((40, 266 + idx * 19), line, font=FONT_SM, fill=(237, 233, 254))
 
     panel.save(output_path)
 
@@ -1708,8 +1720,8 @@ def _draw_array_boxes(draw, arr, x0, y0, box_w=70, box_h=56, highlight_idxs=None
 
         if idx in highlight_idxs:
             fill = (42, 94, 120, 250)
-            outline = (255, 201, 74)
-            text_color = (255, 245, 210)
+            outline = (167, 139, 250)
+            text_color = (237, 233, 254)
 
         _rounded_box(draw, (x, y0, x + box_w, y0 + box_h), fill=fill, outline=outline, width=3 if idx in highlight_idxs else 2, radius=12)
         txt = str(item)[:7]
@@ -1723,8 +1735,8 @@ def _draw_pointer(draw, label, idx, x0, y_base, box_w=70):
     if idx is None or idx < 0 or idx > 9:
         return
     x = x0 + idx * (box_w + 8) + box_w / 2
-    draw.line((x, y_base, x, y_base + 18), fill=(255, 191, 36), width=3)
-    draw.polygon([(x, y_base + 18), (x - 7, y_base + 8), (x + 7, y_base + 8)], fill=(255, 191, 36))
+    draw.line((x, y_base, x, y_base + 18), fill=(167, 139, 250), width=3)
+    draw.polygon([(x, y_base + 18), (x - 7, y_base + 8), (x + 7, y_base + 8)], fill=(167, 139, 250))
     label_bbox = draw.textbbox((0, 0), label, font=FONT_BADGE)
     lw = label_bbox[2] - label_bbox[0]
     _rounded_box(draw, (x - lw / 2 - 10, y_base - 34, x + lw / 2 + 10, y_base - 6), fill=(18, 75, 95, 235), outline=(94, 224, 213), width=2, radius=10)
@@ -1754,7 +1766,7 @@ def _build_scalar_update_overlay(payload, output_path):
     key = payload.get("key", "value")
     value = payload.get("value", "")
 
-    _rounded_box(draw, (24, 60, 320, 96), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=12)
+    _rounded_box(draw, (24, 60, 320, 96), fill=(42, 94, 120, 250), outline=(167, 139, 250), width=3, radius=12)
     draw.text((40, 70), f"{key}: {value}"[:34], font=FONT_BADGE, fill=(255, 255, 255))
     panel.save(output_path)
 
@@ -1771,9 +1783,9 @@ def _build_list_change_overlay(payload, output_path):
     _draw_array_boxes(draw, items, 24, 54, box_w=78, box_h=40, highlight_idxs=highlight)
 
     if action == "list_append":
-        draw.text((620, 14), f"+ {str(added)[:12]}", font=FONT_BADGE, fill=(255, 227, 128))
+        draw.text((620, 14), f"+ {str(added)[:12]}", font=FONT_BADGE, fill=(221, 214, 254))
     elif action == "list_remove":
-        draw.text((604, 14), "item removed", font=FONT_BADGE, fill=(255, 227, 128))
+        draw.text((604, 14), "item removed", font=FONT_BADGE, fill=(221, 214, 254))
 
     panel.save(output_path)
 
@@ -1791,7 +1803,7 @@ def _build_dict_update_overlay(payload, output_path):
     for idx, (k, v) in enumerate(shown):
         highlight = (k in added_keys) or (k in changed_keys)
         fill = (42, 94, 120, 250) if highlight else (24, 78, 99, 240)
-        outline = (255, 201, 74) if highlight else (94, 224, 213)
+        outline = (167, 139, 250) if highlight else (94, 224, 213)
         left = x + (idx % 2) * 350
         top = y + (idx // 2) * 44
         _rounded_box(draw, (left, top, left + 320, top + 36), fill=fill, outline=outline, width=3 if highlight else 2, radius=10)
@@ -1806,7 +1818,7 @@ def _build_loop_progress_overlay(payload, output_path):
     value = payload.get("value", 0)
     changed_items = payload.get("changed_items", [])
 
-    _rounded_box(draw, (24, 58, 180, 96), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=12)
+    _rounded_box(draw, (24, 58, 180, 96), fill=(42, 94, 120, 250), outline=(167, 139, 250), width=3, radius=12)
     draw.text((44, 68), f"{key} = {value}", font=FONT_BADGE, fill=(255, 255, 255))
 
     x = 220
@@ -1838,7 +1850,7 @@ def _build_waiting_input_overlay(payload, output_path):
     label = payload.get("label", "Waiting for input")
     menu_lines = payload.get("menu_lines", [])[:3]
 
-    _rounded_box(draw, (24, 62, 280, 112), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=12)
+    _rounded_box(draw, (24, 62, 280, 112), fill=(42, 94, 120, 250), outline=(167, 139, 250), width=3, radius=12)
     lines = _wrap_text(label, FONT_MD, 210, draw)
     for idx, line in enumerate(lines[:2]):
         draw.text((40, 68 + idx * 20), line, font=FONT_MD, fill=(255, 255, 255))
@@ -1857,11 +1869,11 @@ def _build_function_return_overlay(payload, output_path):
     panel, draw = _panel_base("RETURN VALUE", "A function returned a value")
     value = _safe_repr(payload.get("value", "result"), 32)
 
-    _rounded_box(draw, (54, 58, 246, 96), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=12)
+    _rounded_box(draw, (54, 58, 246, 96), fill=(42, 94, 120, 250), outline=(167, 139, 250), width=3, radius=12)
     draw.text((84, 69), value, font=FONT_BADGE, fill=(255, 255, 255))
-    draw.line((246, 77, 360, 77), fill=(255, 201, 74), width=3)
-    draw.polygon([(360, 77), (350, 71), (350, 83)], fill=(255, 201, 74))
-    draw.text((380, 66), "returned to caller", font=FONT_BADGE, fill=(255, 227, 128))
+    draw.line((246, 77, 360, 77), fill=(167, 139, 250), width=3)
+    draw.polygon([(360, 77), (350, 71), (350, 83)], fill=(167, 139, 250))
+    draw.text((380, 66), "returned to caller", font=FONT_BADGE, fill=(221, 214, 254))
 
     panel.save(output_path)
 
@@ -1870,11 +1882,11 @@ def _build_function_call_overlay(payload, output_path):
     panel, draw = _panel_base("FUNCTION CALL", "Execution is entering a function")
     name = payload.get("name", "function")
 
-    _rounded_box(draw, (40, 66, 290, 108), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=12)
+    _rounded_box(draw, (40, 66, 290, 108), fill=(42, 94, 120, 250), outline=(167, 139, 250), width=3, radius=12)
     draw.text((58, 76), name[:22], font=FONT_BADGE, fill=(255, 255, 255))
-    draw.line((290, 87, 400, 87), fill=(255, 201, 74), width=3)
-    draw.polygon([(412, 87), (400, 80), (400, 94)], fill=(255, 201, 74))
-    draw.text((428, 77), "entering body", font=FONT_BADGE, fill=(255, 227, 128))
+    draw.line((290, 87, 400, 87), fill=(167, 139, 250), width=3)
+    draw.polygon([(412, 87), (400, 80), (400, 94)], fill=(167, 139, 250))
+    draw.text((428, 77), "entering body", font=FONT_BADGE, fill=(221, 214, 254))
 
     panel.save(output_path)
 
@@ -1883,11 +1895,11 @@ def _build_conditional_branch_overlay(payload, output_path):
     outcome = payload.get("outcome", "unknown")
     panel, draw = _panel_base("CONDITION FLOW", "A branch was chosen")
 
-    draw.polygon([(150, 78), (210, 48), (270, 78), (210, 108)], fill=(24, 78, 99, 240), outline=(255, 201, 74))
+    draw.polygon([(150, 78), (210, 48), (270, 78), (210, 108)], fill=(24, 78, 99, 240), outline=(167, 139, 250))
     draw.text((188, 68), "if", font=FONT_BADGE, fill=(255, 255, 255))
 
     if outcome == "true":
-        true_color = (255, 201, 74)
+        true_color = (167, 139, 250)
         false_color = (94, 224, 213)
     elif outcome == "false":
         true_color = (94, 224, 213)
@@ -1913,7 +1925,7 @@ def _build_generic_data_overlay(payload, output_path):
     else:
         x = 24
         for key, value in changed_items[:3]:
-            _rounded_box(draw, (x, 62, x + 220, 98), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=12)
+            _rounded_box(draw, (x, 62, x + 220, 98), fill=(42, 94, 120, 250), outline=(167, 139, 250), width=3, radius=12)
             draw.text((x + 12, 71), f"{key}: {_compact_value_description(value)}"[:26], font=FONT_BADGE, fill=(255, 255, 255))
             x += 236
 
@@ -1964,7 +1976,7 @@ def _build_binary_search_overlay(curr_vars, prev_vars, full_code, output_text, n
     if target != "":
         tt = f"target = {target}"[:20]
         tb = draw.textbbox((0, 0), tt, font=FONT_BADGE)
-        draw.text((738 - (tb[2] - tb[0]), 14), tt, font=FONT_BADGE, fill=(255, 227, 128))
+        draw.text((738 - (tb[2] - tb[0]), 14), tt, font=FONT_BADGE, fill=(221, 214, 254))
 
     bw = min(70, int((716 - 8 * (n - 1)) / max(1, n)))
     x0, y_box, bh = 22, 87, 42
@@ -1975,13 +1987,13 @@ def _build_binary_search_overlay(curr_vars, prev_vars, full_code, output_text, n
         fill, outline, tcol, w = (24, 78, 99, 240), (94, 224, 213), (255, 255, 255), 2
         if found_idx is not None:
             if idx == found_idx:
-                fill, outline, tcol, w = (20, 110, 70, 250), (255, 201, 74), (255, 255, 255), 3
+                fill, outline, tcol, w = (20, 110, 70, 250), (167, 139, 250), (255, 255, 255), 3
             else:
                 fill, outline, tcol = (16, 42, 58, 230), (66, 130, 150), (170, 190, 200)
         elif idx not in active:
             fill, outline, tcol = (16, 42, 58, 230), (66, 130, 150), (150, 170, 180)
         elif idx == mid:
-            fill, outline, w = (42, 94, 120, 250), (255, 201, 74), 3
+            fill, outline, w = (42, 94, 120, 250), (167, 139, 250), 3
         _rounded_box(draw, (x, y_box, x + bw, y_box + bh), fill=fill, outline=outline, width=w, radius=10)
         txt = str(item)[:6]
         bb = draw.textbbox((0, 0), txt, font=FONT_BADGE)
@@ -2005,9 +2017,9 @@ def _build_binary_search_overlay(curr_vars, prev_vars, full_code, output_text, n
         good = found_idx is not None
         _rounded_box(draw, (cx - lw / 2 - 10, 58, cx + lw / 2 + 10, 78),
                      fill=(20, 110, 70, 240) if good else (18, 75, 95, 235),
-                     outline=(255, 201, 74) if good else (94, 224, 213), width=2, radius=8)
+                     outline=(167, 139, 250) if good else (94, 224, 213), width=2, radius=8)
         draw.text((cx - lw / 2, 59), label, font=FONT_BADGE, fill=(255, 255, 255))
-        draw.polygon([(cx, y_box - 2), (cx - 6, y_box - 10), (cx + 6, y_box - 10)], fill=(255, 191, 36))
+        draw.polygon([(cx, y_box - 2), (cx - 6, y_box - 10), (cx + 6, y_box - 10)], fill=(167, 139, 250))
 
     panel.save(output_path)
 
@@ -2052,7 +2064,7 @@ def _build_sorting_overlay(curr_vars, prev_vars, full_code, output_path):
         outline = (94, 224, 213)
         if idx in compare_idxs:
             fill = (42, 94, 120, 250)
-            outline = (255, 201, 74)
+            outline = (167, 139, 250)
 
         _rounded_box(draw, (x, y, x + 54, base_y), fill=fill, outline=outline, width=3 if idx in compare_idxs else 2, radius=10)
 
@@ -2065,7 +2077,7 @@ def _build_sorting_overlay(curr_vars, prev_vars, full_code, output_path):
         v1, v2 = curr_arr[changed_idxs[0]], curr_arr[changed_idxs[1]]
         tag = f"swap  {v1} \u21c4 {v2}"
         tb = draw.textbbox((0, 0), tag, font=FONT_BADGE)
-        draw.text((738 - (tb[2] - tb[0]), 14), tag, font=FONT_BADGE, fill=(255, 230, 168))
+        draw.text((738 - (tb[2] - tb[0]), 14), tag, font=FONT_BADGE, fill=(221, 214, 254))
 
     panel.save(output_path)
 
@@ -2103,20 +2115,20 @@ def _build_stack_overlay(curr_vars, prev_vars, output_path):
     top_slot_y = base_y - len(stable_stack[-4:]) * 26
 
     if action == "push" and moving_value is not None:
-        _rounded_box(draw, (400, 62, 530, 86), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=8)
+        _rounded_box(draw, (400, 62, 530, 86), fill=(42, 94, 120, 250), outline=(167, 139, 250), width=3, radius=8)
         draw.text((414, 66), f"incoming {str(_normalize_value(moving_value))}"[:16], font=FONT_BADGE, fill=(255, 255, 255))
-        draw.line((530, 74, tower_x, top_slot_y + 10), fill=(255, 201, 74), width=3)
-        draw.polygon([(tower_x, top_slot_y + 10), (tower_x + 8, top_slot_y + 5), (tower_x + 8, top_slot_y + 15)], fill=(255, 201, 74))
-        _rounded_box(draw, (tower_x, top_slot_y, tower_x + 130, top_slot_y + 22), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=8)
+        draw.line((530, 74, tower_x, top_slot_y + 10), fill=(167, 139, 250), width=3)
+        draw.polygon([(tower_x, top_slot_y + 10), (tower_x + 8, top_slot_y + 5), (tower_x + 8, top_slot_y + 15)], fill=(167, 139, 250))
+        _rounded_box(draw, (tower_x, top_slot_y, tower_x + 130, top_slot_y + 22), fill=(42, 94, 120, 250), outline=(167, 139, 250), width=3, radius=8)
         draw.text((tower_x + 14, top_slot_y + 2), str(_normalize_value(moving_value))[:12], font=FONT_BADGE, fill=(255, 255, 255))
     elif action == "pop" and moving_value is not None:
         pop_y = base_y - max(1, len(prev_stack[-4:])) * 26
-        _rounded_box(draw, (tower_x, pop_y, tower_x + 130, pop_y + 22), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=8)
+        _rounded_box(draw, (tower_x, pop_y, tower_x + 130, pop_y + 22), fill=(42, 94, 120, 250), outline=(167, 139, 250), width=3, radius=8)
         draw.text((tower_x + 14, pop_y + 2), str(_normalize_value(moving_value))[:12], font=FONT_BADGE, fill=(255, 255, 255))
-        _rounded_box(draw, (400, 62, 530, 86), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=8)
+        _rounded_box(draw, (400, 62, 530, 86), fill=(42, 94, 120, 250), outline=(167, 139, 250), width=3, radius=8)
         draw.text((416, 66), f"popped {str(_normalize_value(moving_value))}"[:15], font=FONT_BADGE, fill=(255, 255, 255))
-        draw.line((tower_x, pop_y + 10, 530, 74), fill=(255, 201, 74), width=3)
-        draw.polygon([(530, 74), (538, 70), (538, 78)], fill=(255, 201, 74))
+        draw.line((tower_x, pop_y + 10, 530, 74), fill=(167, 139, 250), width=3)
+        draw.polygon([(530, 74), (538, 70), (538, 78)], fill=(167, 139, 250))
 
     panel.save(output_path)
 
@@ -2158,7 +2170,7 @@ def _build_linked_list_overlay(curr_vars, prev_vars, output_text, output_path):
 
     for idx, val in enumerate(values[:6]):
         fill = (42, 94, 120, 250) if idx == current_idx else (24, 78, 99, 240)
-        outline = (255, 201, 74) if idx == current_idx else (94, 224, 213)
+        outline = (167, 139, 250) if idx == current_idx else (94, 224, 213)
 
         _rounded_box(draw, (x, y, x + box_w, y + 36), fill=fill, outline=outline, width=3 if idx == current_idx else 2, radius=12)
         bbox = draw.textbbox((0, 0), str(val), font=FONT_BADGE)
@@ -2168,8 +2180,8 @@ def _build_linked_list_overlay(curr_vars, prev_vars, output_text, output_path):
         if idx < len(values[:6]) - 1:
             start_x = x + box_w
             end_x = x + box_w + 28
-            draw.line((start_x + 6, y + 18, end_x, y + 18), fill=(255, 201, 74), width=3)
-            draw.polygon([(end_x, y + 18), (end_x - 8, y + 14), (end_x - 8, y + 22)], fill=(255, 201, 74))
+            draw.line((start_x + 6, y + 18, end_x, y + 18), fill=(167, 139, 250), width=3)
+            draw.polygon([(end_x, y + 18), (end_x - 8, y + 14), (end_x - 8, y + 22)], fill=(167, 139, 250))
 
         x += 112
 
@@ -2180,8 +2192,8 @@ def _build_linked_list_overlay(curr_vars, prev_vars, output_text, output_path):
     current_x = 26 + current_idx * 112 + box_w / 2
     _rounded_box(draw, (current_x - 28, 58, current_x + 28, 80), fill=(18, 75, 95, 235), outline=(94, 224, 213), width=2, radius=10)
     draw.text((current_x - 18, 61), "temp", font=FONT_SM, fill=(255, 255, 255))
-    draw.line((current_x, 80, current_x, 92), fill=(255, 191, 36), width=3)
-    draw.polygon([(current_x, 94), (current_x - 7, 85), (current_x + 7, 85)], fill=(255, 191, 36))
+    draw.line((current_x, 80, current_x, 92), fill=(167, 139, 250), width=3)
+    draw.polygon([(current_x, 94), (current_x - 7, 85), (current_x + 7, 85)], fill=(167, 139, 250))
 
     panel.save(output_path)
 
@@ -2200,11 +2212,11 @@ def _build_recursion_overlay(curr_vars, prev_vars, output_text, output_path):
     for i, (cx, cy) in enumerate(centers[:nodes]):
         if i > 0:
             px, py = centers[(i - 1) // 2]
-            color = (255, 191, 36) if return_mode else (94, 224, 213)
+            color = (167, 139, 250) if return_mode else (94, 224, 213)
             draw.line((px + 28, py, cx - 28, cy), fill=color, width=3)
 
         fill = (42, 94, 120, 250) if return_mode and i == 0 else (24, 78, 99, 240)
-        outline = (255, 201, 74)
+        outline = (167, 139, 250)
         draw.ellipse((cx - 24, cy - 13, cx + 24, cy + 13), fill=fill, outline=outline, width=2)
         draw.text((cx - 11, cy - 8), f"f{i}", font=FONT_BADGE, fill=(255, 255, 255))
 
@@ -2321,10 +2333,10 @@ def _build_function_def_overlay(payload, output_path):
     name = str(payload.get("name", "function"))[:20]
     params = [p for p in payload.get("params", []) if p][:4]
     x = 24
-    _rounded_box(draw, (x, 64, x + 170, 108), fill=(42, 94, 120, 250), outline=(255, 201, 74), width=3, radius=12)
+    _rounded_box(draw, (x, 64, x + 170, 108), fill=(42, 94, 120, 250), outline=(167, 139, 250), width=3, radius=12)
     draw.text((x + 14, 74), f"{name}()", font=FONT_BADGE, fill=(255, 255, 255))
-    draw.line((x + 172, 86, x + 214, 86), fill=(255, 191, 36), width=3)
-    draw.polygon([(x + 214, 79), (x + 214, 93), (x + 226, 86)], fill=(255, 191, 36))
+    draw.line((x + 172, 86, x + 214, 86), fill=(167, 139, 250), width=3)
+    draw.polygon([(x + 214, 79), (x + 214, 93), (x + 226, 86)], fill=(167, 139, 250))
     px = x + 240
     if not params:
         draw.text((px, 74), "takes no inputs", font=FONT_SM, fill=(218, 240, 247))

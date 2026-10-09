@@ -152,7 +152,19 @@ print(result)</textarea>
             <h2 id="videoReadyTitle"><i class="fas fa-circle-play"></i> Your video</h2>
             <span class="badge"><i class="fas fa-check"></i> Ready</span>
           </div>
-          <div class="player"><video id="player" controls playsinline preload="metadata"></video></div>
+          <div class="player" id="playerBox">
+            <video id="player" playsinline preload="metadata" aria-label="Generated explainer video"></video>
+            <button type="button" class="preplay" id="pReplay" hidden aria-label="Replay video"><span><i class="fas fa-rotate-right"></i> Replay</span></button>
+            <div class="pbar" role="group" aria-label="Video controls">
+              <button type="button" class="pbtn" id="pPlay" aria-label="Play"><i class="fas fa-play"></i></button>
+              <span class="ptime" id="pTime">0:00</span>
+              <input type="range" id="pSeek" class="pseek" min="0" max="1000" value="0" aria-label="Seek">
+              <span class="ptime" id="pDur">0:00</span>
+              <select id="pSpeed" class="pspeed" aria-label="Playback speed"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option></select>
+              <button type="button" class="pbtn" id="pMute" aria-label="Mute"><i class="fas fa-volume-high"></i></button>
+              <button type="button" class="pbtn" id="pFull" aria-label="Fullscreen"><i class="fas fa-expand"></i></button>
+            </div>
+          </div>
           <div class="result-actions">
             <a id="dl" class="btn btn-primary btn-sm" download><i class="fas fa-download"></i> Download MP4</a>
             <button type="button" class="btn btn-ghost btn-sm" id="shareBtn"><i class="fas fa-link"></i> Copy link</button>
@@ -527,6 +539,38 @@ print(result)</textarea>
     $("feedbackComment").value = ""; rating = 0; stars.forEach((x) => x.classList.remove("on"));
     $("feedbackForm").hidden = false; $("feedbackDone").hidden = true;
   }
+
+  // ---------- Custom player controls (sit below the video so they never cover the subtitles) ----------
+  (function () {
+    const v = $("player"), box = $("playerBox"), seek = $("pSeek");
+    const fmt = (t) => { t = Math.max(0, Math.floor(t || 0)); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); };
+    const setPlayIcon = () => { $("pPlay").innerHTML = '<i class="fas ' + (v.paused ? "fa-play" : "fa-pause") + '"></i>'; $("pPlay").setAttribute("aria-label", v.paused ? "Play" : "Pause"); };
+    const toggle = () => { if (v.paused) v.play().catch(() => {}); else v.pause(); };
+    $("pPlay").addEventListener("click", toggle);
+    v.addEventListener("click", toggle);
+    v.addEventListener("ended", () => { $("pReplay").hidden = false; });
+    v.addEventListener("play", () => { $("pReplay").hidden = true; });
+    v.addEventListener("seeking", () => { if (v.currentTime < v.duration - 0.2) $("pReplay").hidden = true; });
+    $("pReplay").addEventListener("click", () => { v.currentTime = 0; v.play().catch(() => {}); });
+    v.addEventListener("play", setPlayIcon); v.addEventListener("pause", setPlayIcon); v.addEventListener("ended", setPlayIcon);
+    v.addEventListener("loadedmetadata", () => { $("pDur").textContent = fmt(v.duration); setPlayIcon(); });
+    v.addEventListener("timeupdate", () => {
+      $("pTime").textContent = fmt(v.currentTime);
+      if (!seek.dataset.drag && v.duration) seek.value = String(Math.round(v.currentTime / v.duration * 1000));
+      seek.style.setProperty("--p", (seek.value / 10) + "%");
+    });
+    seek.addEventListener("input", () => { seek.dataset.drag = "1"; if (v.duration) v.currentTime = seek.value / 1000 * v.duration; seek.style.setProperty("--p", (seek.value / 10) + "%"); });
+    seek.addEventListener("change", () => { delete seek.dataset.drag; });
+    $("pSpeed").addEventListener("change", (e) => { v.playbackRate = parseFloat(e.target.value); });
+    $("pMute").addEventListener("click", () => { v.muted = !v.muted; $("pMute").innerHTML = '<i class="fas ' + (v.muted ? "fa-volume-xmark" : "fa-volume-high") + '"></i>'; });
+    $("pFull").addEventListener("click", () => {
+      if (document.fullscreenElement) document.exitFullscreen(); else if (box.requestFullscreen) box.requestFullscreen();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.target.closest && e.target.closest("input, textarea, select, button")) return;
+      if (e.code === "Space" && !$("resultPanel").hidden && document.activeElement === document.body) { e.preventDefault(); toggle(); }
+    });
+  })();
 
   // ---------- AI helpers (shown in the tutor panel) ----------
   function addQA(q, a) {
