@@ -546,6 +546,39 @@ def api_recent_videos():
     return jsonify(results[:24])
 
 
+@app.route("/api/video/<tid>")
+def api_video_details(tid):
+    if "user" not in session:
+        return jsonify({"error": "Login required"}), 401
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("""
+        SELECT v.task_id, v.title, v.filename, v.original_code, v.created_at, v.language, v.explain_mode,
+               CASE WHEN f.id IS NOT NULL THEN 1 ELSE 0 END AS is_favorite
+        FROM videos v
+        LEFT JOIN favorites f ON v.task_id = f.task_id AND f.user_email = ?
+        WHERE v.user_email = ? AND v.task_id = ?
+    """, (session["user"], session["user"], tid))
+    row = c.fetchone()
+    conn.close()
+    if not row:
+        return jsonify({"error": "Video not found"}), 404
+    meta = _load_video_meta(tid)
+    return jsonify({
+        "task_id": row["task_id"],
+        "title": row["title"] or row["filename"],
+        "filename": row["filename"],
+        "original_code": row["original_code"] or "",
+        "created_at": row["created_at"],
+        "language": row["language"] or "",
+        "explain_mode": row["explain_mode"] or "",
+        "is_favorite": bool(row["is_favorite"]),
+        "video_url": f"/download/{row['task_id']}",
+        "steps_meta": meta.get("steps_meta", []),
+        "complexity": meta.get("complexity", {})
+    })
+
+
 @app.route("/api/last_video")
 def api_last_video():
     if "user" not in session:
@@ -572,7 +605,7 @@ def api_last_video():
         return jsonify({})
 
     task_id = row["task_id"]
-    task_data = tasks.get(task_id, {})
+    task_data = _load_video_meta(task_id)
 
     return jsonify({
      "task_id": row["task_id"],
@@ -3201,6 +3234,7 @@ Python code:
             )
 
         _save_subtitle_file(tid, tasks[tid].get("steps_meta", []))
+        _save_video_meta(tid)
 
         tasks[tid].update({
             "status": "completed",
@@ -3239,6 +3273,17 @@ def _clean_code(code):
     return textwrap.dedent(code).strip("\n")
 
 
+def _auto_title(code):
+    """Readable default title when the user leaves it blank (instead of a UUID filename)."""
+    m = re.search(r"^\s*def\s+([A-Za-z_]\w*)", code or "", re.M)
+    if m:
+        return m.group(1).replace("_", " ").strip().capitalize() + " function"
+    m = re.search(r"^\s*class\s+([A-Za-z_]\w*)", code or "", re.M)
+    if m:
+        return m.group(1) + " class"
+    return "Python snippet"
+
+
 def validate_python_logic(code):
     try:
         non_python_patterns = [
@@ -3260,6 +3305,30 @@ def validate_python_logic(code):
         line = f" (line {e.lineno})" if getattr(e, "lineno", None) else ""
         return False, f"Syntax Error{line}: {e.msg}"
     
+
+def _video_meta_path(tid):
+    return os.path.join(VIDEO_DIR, f"{tid}_details.json")
+
+
+def _save_video_meta(tid):
+    try:
+        t = tasks.get(tid, {})
+        with open(_video_meta_path(tid), "w", encoding="utf-8") as f:
+            json.dump({"steps_meta": t.get("steps_meta", []), "complexity": t.get("complexity", {})}, f, ensure_ascii=False)
+    except Exception as e:
+        print("Could not save video meta:", e)
+
+
+def _load_video_meta(tid):
+    t = tasks.get(tid)
+    if t and t.get("steps_meta"):
+        return {"steps_meta": t.get("steps_meta", []), "complexity": t.get("complexity", {})}
+    try:
+        with open(_video_meta_path(tid), encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {"steps_meta": [], "complexity": {}}
+
 
 def _save_subtitle_file(tid, steps_meta):
         subtitle_path = os.path.join(SUBTITLE_DIR, f"{tid}.srt")
@@ -3304,7 +3373,7 @@ def generate():
 
     data = request.json or {}
     code = _clean_code(data.get("code", ""))
-    title = str(data.get("title", "")).strip()
+    title = str(data.get("title", "")).strip()[:80] or _auto_title(_clean_code(data.get("code", "")))
     language = _normalize_language(data.get("language", "english"))
     explain_mode = _normalize_explain_mode(data.get("explain_mode", "beginner"))
     voice_speed = _normalize_voice_speed(data.get("voice_speed", "normal"))
@@ -3418,13 +3487,17 @@ def submit_feedback():
 
 @app.route("/all_feedback")
 def all_feedback():
+    # Only the signed-in user's own feedback (previously exposed everyone's emails)
+    if "user" not in session:
+        return jsonify({"error": "Login required"}), 401
     conn = get_conn()
     c = conn.cursor()
     c.execute("""
         SELECT user_email, task_id, rating, comment, created_at
         FROM feedback
+        WHERE user_email = ?
         ORDER BY id DESC
-    """)
+    """, (session["user"],))
     rows = c.fetchall()
     conn.close()
 
@@ -3735,8 +3808,11 @@ def api_leaderboard():
     rows = c.fetchall()
     conn.close()
 
+    def _mask(email):
+        name, _, domain = str(email).partition("@")
+        return (name[:2] + "***@" + domain) if domain else "***"
     return jsonify([
-        {"user": row["user_email"], "videos": row["videos"]}
+        {"user": _mask(row["user_email"]), "videos": row["videos"]}
         for row in rows
     ])
 

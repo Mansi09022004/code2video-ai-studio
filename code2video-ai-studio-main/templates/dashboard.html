@@ -40,11 +40,12 @@
     <div class="greeting">
       <div>
         <h1>Hi, <span id="firstName">{{ display_name }}</span> 👋</h1>
-        <p>Paste Python code and turn it into a narrated walkthrough.</p>
+        <p id="greetSub">Paste Python code and turn it into a narrated walkthrough.</p>
       </div>
       <div class="stat-row">
         <span class="stat"><i class="fas fa-film" style="color:var(--teal)"></i><b id="totalVideos">0</b> videos</span>
         <span class="stat"><i class="fas fa-star" style="color:#fbbf24"></i><b id="favCount">0</b> favourites</span>
+        <span class="stat" title="Average of your feedback ratings"><i class="fas fa-heart" style="color:#fb7185"></i><b id="avgRating">–</b> avg rating</span>
       </div>
     </div>
 
@@ -72,6 +73,7 @@
             <div class="editor-bar">
               <span class="file"><i class="fab fa-python"></i> main.py</span>
               <span>
+                <button type="button" class="link-btn" id="explainLineBtn" title="Put your cursor on a line (or select it), then click"><i class="fas fa-highlighter"></i> Explain this line</button>
                 <button type="button" class="link-btn" id="clearBtn">Clear</button>
               </span>
             </div>
@@ -116,6 +118,7 @@ print(result)</textarea>
           <div class="actions">
             <button type="button" class="btn btn-primary btn-lg" id="generateBtn"><i class="fas fa-play"></i> Generate video</button>
             <button type="button" class="btn btn-ghost" id="analyzeBtn"><i class="fas fa-gauge-high"></i> Analyze complexity</button>
+            <button type="button" class="btn btn-ghost" id="summaryBtn"><i class="fas fa-lightbulb"></i> AI summary</button>
             <span class="hint"><i class="far fa-clock"></i> Usually takes about a minute</span>
           </div>
 
@@ -148,27 +151,8 @@ print(result)</textarea>
             <button type="button" class="btn btn-ghost btn-sm" id="editScriptBtn"><i class="fas fa-pen"></i> Edit code</button>
           </div>
 
-          <div class="tabs-line" role="tablist">
-            <button role="tab" aria-selected="true" data-tab="stepsTab">Steps</button>
-            <button role="tab" aria-selected="false" data-tab="doubtTab">Ask a doubt</button>
-            <button role="tab" aria-selected="false" data-tab="feedbackTab">Feedback</button>
-          </div>
-
-          <div id="stepsTab" role="tabpanel">
-            <div id="stepsList"><p class="empty">Step details will appear here.</p></div>
-          </div>
-
-          <div id="doubtTab" role="tabpanel" hidden>
-            <label class="sr-only" for="doubtQuestion">Your question</label>
-            <textarea id="doubtQuestion" class="input" placeholder="e.g. Why does the function return before printing?"></textarea>
-            <div class="actions" style="margin-top:10px">
-              <button type="button" class="btn btn-primary btn-sm" id="askDoubtBtn"><i class="fas fa-wand-magic-sparkles"></i> Ask AI tutor</button>
-            </div>
-            <div id="doubtHistoryList" style="margin-top:16px"></div>
-          </div>
-
-          <div id="feedbackTab" role="tabpanel" hidden>
-            <p class="panel-sub" style="margin:0 0 10px">How useful was this video?</p>
+          <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
+            <p class="panel-sub" style="margin:0 0 8px">How useful was this video?</p>
             <div class="rating" id="rating" role="radiogroup" aria-label="Rating">
               <button type="button" data-v="1" aria-label="1 star"><i class="fas fa-star"></i></button>
               <button type="button" data-v="2" aria-label="2 stars"><i class="fas fa-star"></i></button>
@@ -177,11 +161,33 @@ print(result)</textarea>
               <button type="button" data-v="5" aria-label="5 stars"><i class="fas fa-star"></i></button>
             </div>
             <label class="sr-only" for="feedbackComment">Comment</label>
-            <textarea id="feedbackComment" class="input" placeholder="What worked well? What could be clearer? (optional)"></textarea>
+            <textarea id="feedbackComment" class="input" style="min-height:70px" placeholder="What worked well? What could be clearer? (optional)"></textarea>
             <div class="actions" style="margin-top:10px">
-              <button type="button" class="btn btn-primary btn-sm" id="submitFeedbackBtn"><i class="fas fa-paper-plane"></i> Send feedback</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="submitFeedbackBtn"><i class="fas fa-paper-plane"></i> Send feedback</button>
             </div>
           </div>
+        </section>
+
+        <!-- Step-by-step explanation (always visible) -->
+        <section class="panel" aria-labelledby="stepsTitle">
+          <div class="panel-head">
+            <h2 id="stepsTitle"><i class="fas fa-list-ol"></i> Step-by-step explanation</h2>
+          </div>
+          <div id="stepsList"><p class="empty"><i class="fas fa-list-ol"></i>Generate or open a video to see each step explained here.</p></div>
+        </section>
+
+        <!-- AI tutor (always visible) -->
+        <section class="panel" aria-labelledby="doubtTitle">
+          <div class="panel-head">
+            <h2 id="doubtTitle"><i class="fas fa-robot" style="color:var(--violet)"></i> Ask the AI tutor</h2>
+          </div>
+          <p class="panel-sub">Ask anything about the code in the editor — what a line does, why it works, or how to improve it.</p>
+          <label class="sr-only" for="doubtQuestion">Your question</label>
+          <textarea id="doubtQuestion" class="input" placeholder="e.g. Why does the function return before printing?"></textarea>
+          <div class="actions" style="margin-top:10px">
+            <button type="button" class="btn btn-primary btn-sm" id="askDoubtBtn"><i class="fas fa-wand-magic-sparkles"></i> Ask AI tutor</button>
+          </div>
+          <div id="doubtHistoryList" style="margin-top:16px"></div>
         </section>
       </div>
 
@@ -405,7 +411,6 @@ print(result)</textarea>
     $("videoReadyTitle").innerHTML = '<i class="fas fa-circle-play"></i> ' + esc(v.title || "Your video");
     setFav(!!v.is_favorite);
     renderSteps(v.steps_meta);
-    selectTab("stepsTab");
     loadDoubts();
     $("resultPanel").scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -427,17 +432,11 @@ print(result)</textarea>
     } catch (e) { if (e.message !== "auth") toast(e.message, "error"); }
   });
 
-  // Tabs
-  function selectTab(id) {
-    document.querySelectorAll(".tabs-line button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === id)));
-    ["stepsTab", "doubtTab", "feedbackTab"].forEach((t) => ($(t).hidden = t !== id));
-  }
-  document.querySelectorAll(".tabs-line button").forEach((b) => b.addEventListener("click", () => selectTab(b.dataset.tab)));
-
   // Doubts
   async function loadDoubts() {
-    const list = $("doubtHistoryList"); list.innerHTML = "";
+    const list = $("doubtHistoryList");
     if (!current.taskId) return;
+    list.innerHTML = "";
     try {
       const d = await api(`/api/video/${current.taskId}/doubts`);
       list.innerHTML = (d.items || []).map((x) => `<div class="qa"><p class="q">${esc(x.question)}</p><p class="a">${esc(x.answer)}</p></div>`).join("");
@@ -449,9 +448,10 @@ print(result)</textarea>
     if (!code) return toast("Add the code you're asking about.", "error");
     const b = $("askDoubtBtn"); b.disabled = true; b.innerHTML = '<span class="spinner"></span> Thinking…';
     try {
-      await api("/api/ask_doubt", { task_id: current.taskId, code, question, explain_mode: $("explainMode").value, language: $("language").value });
+      const d = await api("/api/ask_doubt", { task_id: current.taskId, code, question, explain_mode: $("explainMode").value, language: $("language").value });
       $("doubtQuestion").value = "";
-      await loadDoubts();
+      if (current.taskId) await loadDoubts();
+      else $("doubtHistoryList").insertAdjacentHTML("afterbegin", `<div class="qa"><p class="q">${esc(question)}</p><p class="a">${esc(d.answer || "")}</p></div>`);
     } catch (e) { if (e.message !== "auth") toast(e.message, "error"); }
     b.disabled = false; b.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> Ask AI tutor';
   });
@@ -472,7 +472,44 @@ print(result)</textarea>
     } catch (e) { if (e.message !== "auth") toast(e.message, "error"); }
   });
 
+  // ---------- AI helpers (shown in the tutor panel) ----------
+  function addQA(q, a) {
+    $("doubtHistoryList").insertAdjacentHTML("afterbegin", `<div class="qa"><p class="q">${esc(q)}</p><p class="a">${esc(a)}</p></div>`);
+    $("doubtTitle").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function currentLine() {
+    const v = codeInput.value, s = codeInput.selectionStart, e = codeInput.selectionEnd;
+    if (e > s) return v.slice(s, e).trim();
+    const start = v.lastIndexOf("\n", s - 1) + 1, end = v.indexOf("\n", s);
+    return v.slice(start, end === -1 ? v.length : end).trim();
+  }
+  $("explainLineBtn").addEventListener("mousedown", (e) => e.preventDefault()); // keep caret in editor
+  $("explainLineBtn").addEventListener("click", async () => {
+    const code = codeInput.value.trim();
+    if (!code) return toast("Paste some Python code first.", "error");
+    const line = currentLine();
+    if (!line) return toast("Click on a line in the editor first.", "error");
+    const b = $("explainLineBtn"); b.disabled = true; b.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Explaining…';
+    try {
+      const d = await api("/api/explain_line", { code, line, language: $("language").value });
+      addQA("Explain: " + line, d.explanation || "");
+    } catch (e) { if (e.message !== "auth") toast(e.message, "error"); }
+    b.disabled = false; b.innerHTML = '<i class="fas fa-highlighter"></i> Explain this line';
+  });
+  $("summaryBtn").addEventListener("click", async () => {
+    const code = codeInput.value.trim();
+    if (!code) return toast("Paste some Python code first.", "error");
+    const b = $("summaryBtn"); b.disabled = true; b.innerHTML = '<span class="spinner" style="border-top-color:var(--teal)"></span> Thinking…';
+    try {
+      const d = await api("/api/concept_summary", { code });
+      const parts = [d.summary, d.algorithm && "Approach: " + d.algorithm, d.time_complexity && "Time: " + d.time_complexity, d.space_complexity && "Space: " + d.space_complexity].filter(Boolean);
+      addQA("AI summary of this code", parts.join("\n"));
+    } catch (e) { if (e.message !== "auth") toast(e.message, "error"); }
+    b.disabled = false; b.innerHTML = '<i class="fas fa-lightbulb"></i> AI summary';
+  });
+
   // ---------- Library ----------
+  const niceTitle = (v) => { const t = v.title || v.filename || ""; return /^[0-9a-f-]{36}\.mp4$/i.test(t) ? "Untitled video" : (t || "Untitled video"); };
   const fmtDate = (s) => { const d = new Date(String(s).replace(" ", "T")); return isNaN(d) ? s : d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }); };
   let videos = [];
   async function loadVideos() {
@@ -482,24 +519,27 @@ print(result)</textarea>
     if ($("filterFavorites").value) p.set("favorites", "1");
     try { return await api("/api/recent_videos?" + p.toString()); } catch (_) { return []; }
   }
-  function openVideo(v) {
-    if (v.original_code) codeInput.value = v.original_code;
-    titleInput.value = v.title && v.title !== v.filename ? v.title : "";
-    showResult({ task_id: v.task_id, video_url: v.video_url, title: v.title, is_favorite: v.is_favorite, steps_meta: null });
+  async function openVideo(v) {
+    let d = v;
+    try { d = await api("/api/video/" + encodeURIComponent(v.task_id)); } catch (e) { if (e.message === "auth") return; }
+    if (d.original_code) codeInput.value = d.original_code;
+    titleInput.value = niceTitle(d) === "Untitled video" ? "" : niceTitle(d);
+    if (d.complexity && Object.keys(d.complexity).length) renderAnalysis(d.complexity);
+    showResult({ task_id: d.task_id, video_url: d.video_url, title: niceTitle(d), is_favorite: d.is_favorite, steps_meta: d.steps_meta });
   }
   function renderRecent(list) {
     $("recentList").innerHTML = list.length ? list.slice(0, 5).map((v, i) => `
       <button type="button" class="recent-item" data-i="${i}">
         <span class="recent-thumb"><i class="fas ${v.is_favorite ? "fa-star" : "fa-play"}"></i></span>
-        <span class="meta"><span class="t">${esc(v.title || v.filename)}</span><br><span class="d">${esc(fmtDate(v.created_at))} · ${esc(v.language || "english")}</span></span>
+        <span class="meta"><span class="t">${esc(niceTitle(v))}</span><br><span class="d">${esc(fmtDate(v.created_at))} · ${esc(v.language || "english")}</span></span>
       </button>`).join("")
       : '<p class="empty"><i class="fas fa-film"></i>Your videos will show up here.</p>';
   }
   function renderGallery(list) {
     $("galleryGrid").innerHTML = list.length ? list.map((v, i) => `
-      <button type="button" class="vcard" data-i="${i}" aria-label="Open ${esc(v.title || v.filename)}">
+      <button type="button" class="vcard" data-i="${i}" aria-label="Open ${esc(niceTitle(v))}">
         <div class="vthumb"><video src="${esc(v.video_url)}#t=1" preload="metadata" muted playsinline></video><span class="play"><i class="fas fa-circle-play"></i></span>${v.is_favorite ? '<span class="fav"><i class="fas fa-star"></i></span>' : ""}</div>
-        <div class="vbody"><div class="t">${esc(v.title || v.filename)}</div><div class="d">${esc(fmtDate(v.created_at))} · ${esc(v.language || "english")} · ${esc(v.explain_mode || "beginner")}</div></div>
+        <div class="vbody"><div class="t">${esc(niceTitle(v))}</div><div class="d">${esc(fmtDate(v.created_at))} · ${esc(v.language || "english")} · ${esc(v.explain_mode || "beginner")}</div></div>
       </button>`).join("")
       : '<p class="empty" style="grid-column:1/-1"><i class="fas fa-photo-film"></i>No videos match yet. Generate one above!</p>';
   }
@@ -512,7 +552,13 @@ print(result)</textarea>
     recentCache = all;
     renderRecent(all);
     $("totalVideos").textContent = stats.total_videos ?? all.length;
-    $("favCount").textContent = all.filter((v) => v.is_favorite).length;
+    $("favCount").textContent = stats.favorite_count ?? all.filter((v) => v.is_favorite).length;
+    $("avgRating").textContent = stats.total_feedback ? Number(stats.avg_rating).toFixed(1) : "–";
+    const last = all[0];
+    if (last) {
+      $("greetSub").innerHTML = `Last video: <strong>${esc(niceTitle(last))}</strong> · ${esc(fmtDate(last.created_at))} · <button type="button" class="link-btn" id="openLastBtn">Open it <i class="fas fa-arrow-right"></i></button>`;
+      $("openLastBtn").addEventListener("click", () => openVideo(last));
+    }
     videos = await loadVideos();
     renderGallery(videos);
   }
