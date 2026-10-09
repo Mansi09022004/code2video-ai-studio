@@ -98,7 +98,8 @@
 .player video { width: 100%; aspect-ratio: 16 / 9; background: #000; }
 .result-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
 .btn-sm { padding: 9px 14px; font-size: .9rem; border-radius: 10px; }
-.btn-fav[aria-pressed="true"] { border-color: rgba(251, 191, 36, .5); color: #fcd34d; background: rgba(251, 191, 36, .08); }
+.btn-fav[aria-pressed="true"] { border-color: rgba(251, 113, 133, .5); color: #fda4af; background: rgba(251, 113, 133, .10); }
+.stat-row[hidden], .stat[hidden] { display: none; }
 .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: .78rem; font-weight: 600; background: rgba(52, 211, 153, .12); color: #6ee7b7; border: 1px solid rgba(52, 211, 153, .3); }
 
 .tabs-line { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: 22px 0 16px; overflow-x: auto; }

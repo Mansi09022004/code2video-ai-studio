@@ -44,10 +44,10 @@
         <h1>Hi, <span id="firstName">{{ display_name }}</span> 👋</h1>
         <p id="greetSub">Paste Python code and turn it into a narrated walkthrough.</p>
       </div>
-      <div class="stat-row">
-        <span class="stat"><i class="fas fa-film" style="color:var(--teal)"></i><b id="totalVideos">0</b> videos</span>
-        <span class="stat"><i class="fas fa-star" style="color:#fbbf24"></i><b id="favCount">0</b> favourites</span>
-        <span class="stat" title="Average of your feedback ratings"><i class="fas fa-heart" style="color:#fb7185"></i><b id="avgRating">–</b> avg rating</span>
+      <div class="stat-row" id="statRow" hidden>
+        <span class="stat" title="Videos you have created"><i class="fas fa-film" style="color:var(--teal)"></i><b id="totalVideos">0</b> <span id="videosLbl">videos created</span></span>
+        <span class="stat" title="Videos you marked as favourite"><i class="fas fa-heart" style="color:#fb7185"></i><b id="favCount">0</b> <span id="favLbl">favourites</span></span>
+        <span class="stat" id="ratingStat" title="Average of the star ratings you gave your videos" hidden><i class="fas fa-star" style="color:#fbbf24"></i><b id="avgRating">–</b> / 5 your avg rating</span>
       </div>
     </div>
 
@@ -149,7 +149,7 @@ print(result)</textarea>
             <a id="dl" class="btn btn-primary btn-sm" download><i class="fas fa-download"></i> Download MP4</a>
             <button type="button" class="btn btn-ghost btn-sm" id="subtitlesBtn"><i class="fas fa-closed-captioning"></i> Subtitles (.srt)</button>
             <button type="button" class="btn btn-ghost btn-sm" id="shareBtn"><i class="fas fa-link"></i> Copy link</button>
-            <button type="button" class="btn btn-ghost btn-sm btn-fav" id="favoriteBtn" aria-pressed="false"><i class="far fa-star"></i> Favourite</button>
+            <button type="button" class="btn btn-ghost btn-sm btn-fav" id="favoriteBtn" aria-pressed="false"><i class="far fa-heart"></i> Add to favourites</button>
             <button type="button" class="btn btn-ghost btn-sm" id="editScriptBtn"><i class="fas fa-pen"></i> Edit code</button>
           </div>
 
@@ -414,7 +414,7 @@ print(result)</textarea>
     current.fav = on;
     const b = $("favoriteBtn");
     b.setAttribute("aria-pressed", String(on));
-    b.innerHTML = on ? '<i class="fas fa-star"></i> Favourited' : '<i class="far fa-star"></i> Favourite';
+    b.innerHTML = on ? '<i class="fas fa-heart"></i> Saved to favourites' : '<i class="far fa-heart"></i> Add to favourites';
   }
   function showResult(v) {
     current.taskId = v.task_id; current.url = v.video_url;
@@ -544,7 +544,7 @@ print(result)</textarea>
   function renderRecent(list) {
     $("recentList").innerHTML = list.length ? list.slice(0, 5).map((v, i) => `
       <button type="button" class="recent-item" data-i="${i}">
-        <span class="recent-thumb"><i class="fas ${v.is_favorite ? "fa-star" : "fa-play"}"></i></span>
+        <span class="recent-thumb"><i class="fas ${v.is_favorite ? "fa-heart" : "fa-play"}"></i></span>
         <span class="meta"><span class="t">${esc(niceTitle(v))}</span><br><span class="d">${esc(fmtDate(v.created_at))} · ${esc(v.language || "english")}</span></span>
       </button>`).join("")
       : '<p class="empty"><i class="fas fa-film"></i>Your videos will show up here.</p>';
@@ -568,6 +568,10 @@ print(result)</textarea>
     $("totalVideos").textContent = stats.total_videos ?? all.length;
     $("favCount").textContent = stats.favorite_count ?? all.filter((v) => v.is_favorite).length;
     $("avgRating").textContent = stats.total_feedback ? Number(stats.avg_rating).toFixed(1) : "–";
+    $("ratingStat").hidden = !stats.total_feedback;
+    $("videosLbl").textContent = Number($("totalVideos").textContent) === 1 ? "video created" : "videos created";
+    $("favLbl").textContent = Number($("favCount").textContent) === 1 ? "favourite" : "favourites";
+    $("statRow").hidden = !(Number($("totalVideos").textContent) > 0);
     const last = all[0];
     if (last) {
       $("greetSub").innerHTML = `Last video: <strong>${esc(niceTitle(last))}</strong> · ${esc(fmtDate(last.created_at))} · <button type="button" class="link-btn" id="openLastBtn">Open it <i class="fas fa-arrow-right"></i></button>`;
