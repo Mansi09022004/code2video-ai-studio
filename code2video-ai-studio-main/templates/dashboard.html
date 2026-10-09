@@ -117,7 +117,6 @@ print(result)</textarea>
 
           <div class="actions">
             <button type="button" class="btn btn-primary btn-lg" id="generateBtn"><i class="fas fa-play"></i> Generate video</button>
-            <button type="button" class="btn btn-ghost" id="analyzeBtn"><i class="fas fa-gauge-high"></i> Analyze complexity</button>
             <button type="button" class="btn btn-ghost" id="summaryBtn"><i class="fas fa-lightbulb"></i> AI summary</button>
             <span class="hint"><i class="far fa-clock"></i> Usually takes about a minute</span>
           </div>
@@ -275,7 +274,7 @@ print(result)</textarea>
     codeInput.value = codeInput.value.slice(0, s) + "    " + codeInput.value.slice(t);
     codeInput.selectionStart = codeInput.selectionEnd = s + 4;
   });
-  $("clearBtn").addEventListener("click", () => { codeInput.value = ""; codeInput.focus(); });
+  $("clearBtn").addEventListener("click", () => { codeInput.value = ""; codeInput.focus(); scheduleAnalyze(0); });
   const prefill = sessionStorage.getItem("prefill_code");
   if (prefill) { codeInput.value = prefill; sessionStorage.removeItem("prefill_code"); }
 
@@ -296,7 +295,7 @@ print(result)</textarea>
   exList.addEventListener("click", (e) => {
     const b = e.target.closest("button[data-i]"); if (!b) return;
     const ex = EXAMPLES[+b.dataset.i];
-    codeInput.value = ex.code; titleInput.value = ex.title; toggleMenu(false); codeInput.focus();
+    codeInput.value = ex.code; titleInput.value = ex.title; toggleMenu(false); codeInput.focus(); scheduleAnalyze(0);
   });
 
   // ---------- Analyze ----------
@@ -312,14 +311,23 @@ print(result)</textarea>
     note.textContent = bits.join(" ");
     note.hidden = !d.explanation;
   }
-  $("analyzeBtn").addEventListener("click", async () => {
+  // Live analysis: re-run whenever the code changes (debounced), so the card never shows a stale result.
+  let analyzeTimer = null, analyzeSeq = 0;
+  async function liveAnalyze() {
     const code = codeInput.value.trim();
-    if (!code) return toast("Paste some Python code first.", "error");
-    const b = $("analyzeBtn"); b.disabled = true;
-    try { renderAnalysis(await api("/api/analyze_code", { code })); }
-    catch (e) { if (e.message !== "auth") toast(e.message, "error"); }
-    b.disabled = false;
-  });
+    const seq = ++analyzeSeq;
+    if (!code) { $("analysisCard").hidden = true; return; }
+    try {
+      const d = await api("/api/analyze_code", { code });
+      if (seq !== analyzeSeq) return;           // a newer edit is already in flight
+      if (d.confidence === "low") { $("analysisCard").hidden = true; return; }   // e.g. half-typed code
+      renderAnalysis(d);
+    } catch (e) { if (seq === analyzeSeq) $("analysisCard").hidden = true; }
+  }
+  function scheduleAnalyze(delay) { clearTimeout(analyzeTimer); analyzeTimer = setTimeout(liveAnalyze, delay === undefined ? 700 : delay); }
+  codeInput.addEventListener("input", () => scheduleAnalyze());
+  codeInput.addEventListener("paste", () => scheduleAnalyze(150));
+  scheduleAnalyze(400);
 
   // ---------- Voice preview ----------
   $("previewVoiceBtn").addEventListener("click", async () => {

@@ -114,7 +114,7 @@ class Analyzer:
         self._cache = {}
         self._stack = []
         self.features = {"recursion": None, "sort": False, "max_loop": 0, "memo": False, "graph": False,
-                         "swap": False, "log_loop": False, "alloc": False, "early_exit": False}
+                         "swap": False, "const_loop": False, "log_loop": False, "alloc": False, "early_exit": False}
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef):
                 self.classes[node.name] = node
@@ -359,6 +359,8 @@ class Analyzer:
             return C1, C1
         if isinstance(st, ast.For) or isinstance(st, ast.AsyncFor):
             it = self.iter_cost(st.iter)
+            if it == C1:
+                self.features["const_loop"] = True
             if it >= CN:
                 self.features["max_loop"] = max(self.features["max_loop"], depth + 1)
             tpre, spre = self.ex(st.iter, ctx, mult)
@@ -724,7 +726,10 @@ def _explain(a, time_c, space_c, rec_kind, note):
     if f["sort"]:
         bits.append("a sort costs n log n")
     if not bits and time_c == C1:
-        bits.append("only fixed-size operations, no loops or recursion over the input")
+        if f["const_loop"]:
+            bits.append("loops run a fixed number of times (constant bounds), so the work doesn't grow with the input")
+        else:
+            bits.append("only fixed-size operations, no loops or recursion over the input")
     return "; ".join(bits).capitalize() + "."
 
 
