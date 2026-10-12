@@ -7,6 +7,7 @@ from complexity import analyze as complexity_analyze
 import re
 import requests
 import asyncio
+import subprocess
 import sqlite3
 import zipfile
 from io import BytesIO
@@ -2522,17 +2523,52 @@ def _safe_step_data(step, idx):
 # Voice and recording
 # -------------------------------
 
+def _gtts_fallback(text, path, voice, speed):
+    """Backup voice engine used when the Microsoft endpoint rejects the request (e.g. 403 from cloud IPs)."""
+    from gtts import gTTS
+    lang = str(voice).split("-")[0].lower() or "en"
+    tmp = path + ".gtts.mp3"
+    kwargs = {"tld": "co.in"} if lang == "en" else {}
+    try:
+        gTTS(text=text, lang=lang, **kwargs).save(tmp)
+    except Exception:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        raise
+    tempo = {"slow": 0.88, "normal": 1.0, "fast": 1.12}.get(_normalize_voice_speed(speed), 1.0)
+    if tempo == 1.0:
+        os.replace(tmp, path)
+        return
+    res = subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-i", tmp, "-filter:a", f"atempo={tempo}", path],
+        capture_output=True,
+    )
+    try:
+        os.remove(tmp)
+    except OSError:
+        pass
+    if res.returncode != 0:
+        raise RuntimeError("ffmpeg tempo adjust failed")
+
+
 async def _generate_voice(text, path, voice=DEFAULT_VOICE, speed="normal"):
     rate_value = SUPPORTED_VOICE_SPEEDS.get(_normalize_voice_speed(speed), "-5%")
 
-    communicate = edge_tts.Communicate(
-        text,
-        voice,
-        rate=rate_value,
-        pitch="+2Hz",
-        volume="+10%"
-    )
-    await communicate.save(path)
+    try:
+        communicate = edge_tts.Communicate(
+            text,
+            voice,
+            rate=rate_value,
+            pitch="+2Hz",
+            volume="+10%"
+        )
+        await communicate.save(path)
+        if os.path.getsize(path) > 0:
+            return
+        raise RuntimeError("empty audio from edge-tts")
+    except Exception as exc:
+        print(f"[voice] edge-tts failed ({exc}); using gTTS fallback", flush=True)
+        await asyncio.get_running_loop().run_in_executor(None, _gtts_fallback, text, path, voice, speed)
 
 
 def _save_video_record(user_email, tid, code, title="", language="english", explain_mode="beginner"):
