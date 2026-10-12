@@ -141,10 +141,8 @@ VIDEO_H = 720
 # DATABASE HELPERS
 # ===============================
 
-def get_conn():
-    conn = sqlite3.connect(DB)
-    conn.row_factory = sqlite3.Row
-    return conn
+import storage
+from storage import get_conn, IntegrityErrors  # Postgres when DATABASE_URL is set, else local SQLite
 
 
 def init_db():
@@ -313,7 +311,7 @@ def register():
 
         session["user"] = email
         return jsonify({"status": "success"})
-    except sqlite3.IntegrityError:
+    except IntegrityErrors:
         conn.close()
         return jsonify({"status": "error", "message": "User already exists"}), 400
 
@@ -438,6 +436,8 @@ def dashboard():
 
 @app.route("/generated_videos/<filename>")
 def get_video(filename):
+    if filename.endswith(".mp4") and _TID_RE.match(filename[:-4]):
+        _local_video(filename[:-4])
     return send_from_directory(VIDEO_DIR, filename)
 
 # ===============================
@@ -572,7 +572,7 @@ def api_video_details(tid):
     conn = get_conn()
     c = conn.cursor()
     c.execute("""
-        SELECT v.task_id, v.title, v.filename, v.original_code, v.created_at, v.language, v.explain_mode,
+        SELECT v.task_id, v.title, v.filename, v.original_code, v.created_at, v.language, v.explain_mode, v.is_public,
                CASE WHEN f.id IS NOT NULL THEN 1 ELSE 0 END AS is_favorite
         FROM videos v
         LEFT JOIN favorites f ON v.task_id = f.task_id AND f.user_email = ?
@@ -627,7 +627,7 @@ def shared_video_page(tid):
     c.execute("SELECT title, original_code, language, explain_mode FROM videos WHERE task_id=? AND is_public=1", (tid,))
     row = c.fetchone()
     conn.close()
-    if not row or not os.path.exists(os.path.join(VIDEO_DIR, f"{tid}.mp4")):
+    if not row or not _local_video(tid):
         return render_template("share.html", missing=True), 404
     title = row["title"] or "Code explainer video"
     if re.match(r"^[0-9a-f-]{36}\.mp4$", title, re.I):
@@ -645,8 +645,8 @@ def shared_video_file(tid):
     c.execute("SELECT 1 FROM videos WHERE task_id=? AND is_public=1", (tid,))
     ok = c.fetchone()
     conn.close()
-    path = os.path.join(VIDEO_DIR, f"{tid}.mp4")
-    if not ok or not os.path.exists(path):
+    path = _local_video(tid) if ok else None
+    if not path:
         return jsonify({"error": "Not found"}), 404
     return send_file(path, as_attachment=False, conditional=True)
 
@@ -675,6 +675,7 @@ def api_video_delete(tid):
             os.remove(p)
         except OSError:
             pass
+    storage.delete_files([f"{tid}.mp4", f"{tid}_details.json"])
     tasks.pop(tid, None)
     return jsonify({"deleted": True})
 
@@ -2542,17 +2543,14 @@ def _save_video_record(user_email, tid, code, title="", language="english", expl
     conn = get_conn()
     c = conn.cursor()
     c.execute("""
-        INSERT OR REPLACE INTO videos(user_email, task_id, title, filename, original_code, language, explain_mode)
-        VALUES(?,?,?,?,?,?,?)
-    """, (
-        user_email,
-        tid,
-        clean_title,
-        f"{tid}.mp4",
-        code,
-        language,
-        explain_mode
-    ))
+        UPDATE videos SET user_email=?, title=?, filename=?, original_code=?, language=?, explain_mode=?
+        WHERE task_id=?
+    """, (user_email, clean_title, f"{tid}.mp4", code, language, explain_mode, tid))
+    if not c.rowcount:
+        c.execute("""
+            INSERT INTO videos(user_email, task_id, title, filename, original_code, language, explain_mode)
+            VALUES(?,?,?,?,?,?,?)
+        """, (user_email, tid, clean_title, f"{tid}.mp4", code, language, explain_mode))
     conn.commit()
     conn.close()
 
@@ -2966,6 +2964,7 @@ Python code:
 
         _save_subtitle_file(tid, tasks[tid].get("steps_meta", []))
         _save_video_meta(tid)
+        _persist_video_files(tid)
 
         tasks[tid].update({
             "status": "completed",
@@ -3041,6 +3040,17 @@ def _video_meta_path(tid):
     return os.path.join(VIDEO_DIR, f"{tid}_details.json")
 
 
+def _persist_video_files(tid):
+    """Copy the finished video and its step details to permanent storage (no-op without Supabase)."""
+    storage.put_file(f"{tid}.mp4", os.path.join(VIDEO_DIR, f"{tid}.mp4"), "video/mp4")
+    storage.put_file(f"{tid}_details.json", _video_meta_path(tid), "application/json")
+
+
+def _local_video(tid):
+    """Path of the mp4 on local disk, fetching it back from permanent storage if the server restarted."""
+    return storage.ensure_local(f"{tid}.mp4", os.path.join(VIDEO_DIR, f"{tid}.mp4"))
+
+
 def _save_video_meta(tid):
     try:
         t = tasks.get(tid, {})
@@ -3055,7 +3065,8 @@ def _load_video_meta(tid):
     if t and t.get("steps_meta"):
         return {"steps_meta": t.get("steps_meta", []), "complexity": t.get("complexity", {})}
     try:
-        with open(_video_meta_path(tid), encoding="utf-8") as f:
+        meta_path = storage.ensure_local(f"{tid}_details.json", _video_meta_path(tid))
+        with open(meta_path, encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return {"steps_meta": [], "complexity": {}}
@@ -3141,19 +3152,19 @@ def status(tid):
 
 @app.route("/download/<tid>")
 def download(tid):
-    file_path = os.path.join(VIDEO_DIR, f"{tid}.mp4")
+    file_path = _local_video(tid) if _TID_RE.match(tid) else None
 
-    if not os.path.exists(file_path):
+    if not file_path:
         return jsonify({"status": "error", "message": "Video file not found"}), 404
 
-    return send_file(file_path, as_attachment=False)
+    return send_file(file_path, as_attachment=False, conditional=True)
 
 
 @app.route("/download_zip/<tid>")
 def download_zip(tid):
-    file_path = os.path.join(VIDEO_DIR, f"{tid}.mp4")
+    file_path = _local_video(tid) if _TID_RE.match(tid) else None
 
-    if not os.path.exists(file_path):
+    if not file_path:
         return jsonify({"status": "error", "message": "Video file not found"}), 404
 
     zip_path = os.path.join(VIDEO_DIR, f"{tid}.zip")
